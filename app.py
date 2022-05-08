@@ -405,11 +405,11 @@ def handle_message(event):
         dbid = event.source.user_id
         dbname = profile.display_name
         str(event.timestamp)
-        cur.execute(
-            """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
-            (dbid, dbname, dbmes, dbtim, dbts )
-        );
-        conn.commit()
+        # cur.execute(
+        #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
+        #     (dbid, dbname, dbmes, dbtim, dbts )
+        # );
+        # conn.commit()
     else:
         if isinstance(event.source, SourceGroup):
             # profile = line_bot_api.get_profile(event.source.group_id)
@@ -1391,12 +1391,12 @@ def handle_message(event):
         ifNum = random.randint(0, 29)
         # if event.source.user_id != "Ua3c836397c7cb7f0a3df9df7d16e2be1":
         if ifNum == 0:
-            cur = conn.cursor()
-            cur.execute(
-                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
-                ("me", dbname, mesText, dbtim, dbts )
-            );
-            conn.commit()
+            # cur = conn.cursor()
+            # cur.execute(
+            #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
+            #     ("me", dbname, mesText, dbtim, dbts )
+            # );
+            # conn.commit()
             line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text=mesText))
