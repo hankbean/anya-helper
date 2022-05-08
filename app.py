@@ -50,18 +50,22 @@ client_secret = config['imgur_api']['Client_Secret']
 album_id = config['imgur_api']['Album_ID']
 API_Get_Image = config['other_api']['API_Get_Image']
 
-print ("Opened sex successfully")
+cur = conn.cursor()
+cur.execute(
+    """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
+    ("me", "456123", "hello", "1922", "45612" )
+);
+conn.commit()
+
+
 @app.route("/callback", methods=['POST'])
 def callback():
     # get X-Line-Signature header value
-    print("1112221")
     signature = request.headers['X-Line-Signature']
-    print("1111111")
     # get request body as text
     body = request.get_data(as_text=True)
     # print("body:",body)
     app.logger.info("Request body: " + body)
-
     # handle webhook body
     try:
         handler.handle(body, signature)
