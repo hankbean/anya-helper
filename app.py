@@ -26,7 +26,7 @@ verTime = "2022.Apr.03.5" # 版本
 verAnswer= "回答"
 
 
-""" parse.uses_netloc.append("postgres")
+parse.uses_netloc.append("postgres")
 url = parse.urlparse(os.environ["DATABASE_URL"])
 
 conn = psycopg2.connect(
@@ -35,7 +35,7 @@ conn = psycopg2.connect(
     password=url.password,
     host=url.hostname,
     port=url.port
-) """
+)
 print ("Opened database successfully")
 
 app = Flask(__name__)
@@ -382,7 +382,7 @@ def handle_message(event):
         )
 
         # return 0
-    cur = conn.cursor()
+    cur = conn.cursor()  
     # cur.execute('''CREATE TABLE MESSAGE
     #        (ID TEXT      NOT NULL,
     #        NAME           TEXT    NOT NULL,
