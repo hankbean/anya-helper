@@ -940,13 +940,12 @@ def handle_message(event):
     if event.message.text == ".下一頁" :
         return 0
 
-    if event.message.text == "#list" or event.message.text == "說明" or event.message.text == "文大吃吃" or event.message.text == "吃吃精靈" or event.message.text == "文大吃吃精靈" or event.message.text == "吃吃":
-        print("213456")
+    if event.message.text == "#list" or event.message.text == "說明" or event.message.text == "文大吃吃" or event.message.text == "吃吃精靈" or event.message.text == "文大吃吃精靈" or event.message.text == "吃吃" or event.message.text == "anya" or event.message.text == "安妮亞":
         userid = event.source
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="指令清單: \n\n抽 or 牌\n抽牌\n抽大牌\n六芒星\n六芒星說明\n骰子卡\n進階骰子卡\n"+\
+                text="吃吃沒死，我只是轉生了而已!!\n\n指令清單: \n\n抽 or 牌\n抽牌\n抽大牌\n六芒星\n六芒星說明\n骰子卡\n進階骰子卡\n"+\
                 "吃什麼\n中二\n侑子 or 次元魔女\n靈數占卜\n不負責任猜題\n#點歌\n#講笑話\n\n作者\n版本"
             )
             # 召喚
