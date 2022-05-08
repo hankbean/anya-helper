@@ -22,7 +22,7 @@ from urllib import parse
 import psycopg2
 
 
-verTime = "2019.Apr.03.5111" # 版本
+verTime = "2019.Apr.03.51121" # 版本
 verAnswer= "回答"
 
 
