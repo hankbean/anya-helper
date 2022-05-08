@@ -55,7 +55,7 @@ API_Get_Image = config['other_api']['API_Get_Image']
 def callback():
     # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
-
+    print("1111111")
     # get request body as text
     body = request.get_data(as_text=True)
     # print("body:",body)
@@ -64,7 +64,6 @@ def callback():
     # handle webhook body
     try:
         handler.handle(body, signature)
-        print("1111111")
     except InvalidSignatureError:
         abort(400)
 
@@ -938,6 +937,7 @@ def handle_message(event):
         return 0
 
     if event.message.text == "#list" or event.message.text == "說明" or event.message.text == "文大吃吃" or event.message.text == "吃吃精靈" or event.message.text == "文大吃吃精靈" or event.message.text == "吃吃":
+        print("213456")
         userid = event.source
         line_bot_api.reply_message(
             event.reply_token,
