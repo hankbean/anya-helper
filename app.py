@@ -26,16 +26,16 @@ verTime = "2022.Apr.03.5" # 版本
 verAnswer= "回答"
 
 
-parse.uses_netloc.append("postgres")
-url = parse.urlparse(os.environ["DATABASE_URL"])
+# parse.uses_netloc.append("postgres")
+# url = parse.urlparse(os.environ["DATABASE_URL"])
 
-conn = psycopg2.connect(
-    database=url.path[1:],
-    user=url.username,
-    password=url.password,
-    host=url.hostname,
-    port=url.port
-)
+# conn = psycopg2.connect(
+#     database=url.path[1:],
+#     user=url.username,
+#     password=url.password,
+#     host=url.hostname,
+#     port=url.port
+# )
 print ("Opened database successfully")
 
 app = Flask(__name__)
