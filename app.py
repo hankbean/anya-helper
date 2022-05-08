@@ -22,7 +22,7 @@ from urllib import parse
 import psycopg2
 
 
-verTime = "2022.Apr.03.5" # 版本
+verTime = "2019.Apr.03.5111" # 版本
 verAnswer= "回答"
 
 
@@ -42,7 +42,6 @@ app = Flask(__name__)
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-#line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
 line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
 handler = WebhookHandler(config['line_bot']['Channel_Secret'])
 client_id = config['imgur_api']['Client_ID']
@@ -50,27 +49,23 @@ client_secret = config['imgur_api']['Client_Secret']
 album_id = config['imgur_api']['Album_ID']
 API_Get_Image = config['other_api']['API_Get_Image']
 
-# cur = conn.cursor()
-# cur.execute(
-#     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
-#     ("me", "456123", "hello", "1922", "45612" )
-# );
-# conn.commit()
-
 
 @app.route("/callback", methods=['POST'])
 def callback():
     # get X-Line-Signature header value
     signature = request.headers['X-Line-Signature']
+
     # get request body as text
     body = request.get_data(as_text=True)
     # print("body:",body)
     app.logger.info("Request body: " + body)
+
     # handle webhook body
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
+
     return 'ok'
 
 
@@ -386,7 +381,7 @@ def handle_message(event):
         )
 
         # return 0
-    cur = conn.cursor()  
+    cur = conn.cursor()
     # cur.execute('''CREATE TABLE MESSAGE
     #        (ID TEXT      NOT NULL,
     #        NAME           TEXT    NOT NULL,
@@ -408,11 +403,11 @@ def handle_message(event):
         dbid = event.source.user_id
         dbname = profile.display_name
         str(event.timestamp)
-        # cur.execute(
-        #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
-        #     (dbid, dbname, dbmes, dbtim, dbts )
-        # );
-        # conn.commit()
+        cur.execute(
+            """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
+            (dbid, dbname, dbmes, dbtim, dbts )
+        );
+        conn.commit()
     else:
         if isinstance(event.source, SourceGroup):
             # profile = line_bot_api.get_profile(event.source.group_id)
@@ -941,7 +936,6 @@ def handle_message(event):
         return 0
 
     if event.message.text == "#list" or event.message.text == "說明" or event.message.text == "文大吃吃" or event.message.text == "吃吃精靈" or event.message.text == "文大吃吃精靈" or event.message.text == "吃吃":
-        print("213456")
         userid = event.source
         line_bot_api.reply_message(
             event.reply_token,
@@ -1395,12 +1389,12 @@ def handle_message(event):
         ifNum = random.randint(0, 29)
         # if event.source.user_id != "Ua3c836397c7cb7f0a3df9df7d16e2be1":
         if ifNum == 0:
-            # cur = conn.cursor()
-            # cur.execute(
-            #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
-            #     ("me", dbname, mesText, dbtim, dbts )
-            # );
-            # conn.commit()
+            cur = conn.cursor()
+            cur.execute(
+                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
+                ("me", dbname, mesText, dbtim, dbts )
+            );
+            conn.commit()
             line_bot_api.reply_message(
                 event.reply_token,
                 TextSendMessage(text=mesText))
