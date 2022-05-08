@@ -21,28 +21,65 @@ import os
 from urllib import parse
 import psycopg2
 
+import jwt
+from jwt.algorithms import RSAAlgorithm
+import time
+
 
 verTime = "2022.Apr.03.5" # 版本
 verAnswer= "回答"
 
 
 parse.uses_netloc.append("postgres")
-url = parse.urlparse(os.environ["DATABASE_URL"])
+#url = parse.urlparse(os.environ["DATABASE_URL"])
 
-conn = psycopg2.connect(
+""" conn = psycopg2.connect(
     database=url.path[1:],
     user=url.username,
     password=url.password,
     host=url.hostname,
     port=url.port
 )
-print ("Opened database successfully")
+print ("Opened database successfully") """
+
+privateKey = {
+  "alg": "RS256",
+  "d": "NeR0jm5iAZjzLUec06WJHbzp6NmCCdZUe7VBC-00xwArHRKMpR5vwmood8pIGHiG7U0VbsUCdg9m0aun09Jepu0nJl5SC9moeo8WYZ4I6tHloBPjCqSZ4CzqRKe2-7CQbPg9jkky7XwY1zP2SrAXciq_d6KBtZW9LSJiykmK4UDZIpVv53F-C-3Dy7JICwaIffskvy4kotIIqLqZ_WfLLHaX5iH-xHJUrSxm6QKPXftai4qo3Q6XqLh_f56ibMPlIiDcYj5TbJj-rL-SIag7PkGiwrG9ANoOpKewCmx7AJo-n3saegKUo8a-vswIokEfULXSmF4NDfQNWFF7VQAVZw",
+  "dp": "ju619NRD-FgxBOjaRAznnITcnHlfKm2VfvQ6WOhoyVnL_wdcGAnR3_JsW8nDI0iGkVBZk9gOqvXln5DuQD1p_GRort22kUXzobMWlTPQvY1k6Qy1jyEUt6dLoATuS0SYjxFVAsDYiQKJv587JykNYfqJGAZI4ITh6kzXgOSN53s",
+  "dq": "aTiau4-wvZPCPeaEAcTmqX8M7CXwd-owhdggH6d51h3moMB-1r1qv7cjA93UMt3rrE7KFUVN6pNMK8FNsb27lSIbhPRLSigRotx3pq30sFQwPQnjEpBWFhV340Y_QXsDBlm9hQcR-2Uuj4CKVsuI8WaP0e_JW9c9z_eugS61nOs",
+  "e": "AQAB",
+  "key_ops": [
+    "sign"
+  ],
+  "kty": "RSA",
+  "n": "y6KMTeLbIyZONxSGZB7b7ISB8Ov2R0e2_7ziSLIDPEVBGe9rsH2Ws7LKR_6FuCxyiGyc5Mg_oVRBDBK1Ohb85b84gCLWzP5QmyXV7jDvteOBa5Vzih-jQuj9H3XI3RgNe8cJBMGizW0Z7gycsuS7v1rzjkpscOda6R-TyqnMXhTYhtYiWLV_zJOU0DPlo5aku_CQIbD-qMQJi5UfLHoQ-ithAXSWTxzEBJnZKc0vIQrtNS7lW9_HBIPbK4HgsBoNYjzxvoyog70Q5GrFEMHkUsd2a7SdAg9mworvKnfY2uaOBc5nqq69eJA5CufZrueSA9-mW1f-rsFmn0o864snhQ",
+  "p": "7eztnXq43OU54jgH8EkBSkqP50dBe5spoywPqjAxUxHsJcLIOe85QDLZfRJPUjtTVpittx7Umqcz3Wy1u4DN83CyjAj015DelSqPHcoVPsezNhpMjnFBUeIFGzcscbQ_aGE_hWEyjdWBmOtzkSaozhg_UpFovKeXfZU0r5zzLy8",
+  "q": "2xrAkIs5Jr8ABYmJS5zNQWceGOWcPnU2v_ufqN2lar1hfaNZ1VTTKq2NUcLhybsw7Xdq9DFRVJhKPTITh62ITshxN4_A3i6SxtPHpBlwGKtWmI--glFDdVQlQnKHyTpl1PpDtpqeUrctJBEYpgupdlppJMEP1XKxsB7U32adx4s",
+  "qi": "50yV2ChH1TIJ-jUfOPocFJLoQbcPEAgkhekTKDqkOx4ljciVtfHk6bz9-Bpx7vOoFbhJCmQaQ0YuK9GzBzLpbo57APbTkDkqJm8AN2zbqOYSrvm43iFs_EcJykZYAFfaNg8-tQz-zpRejRoGn-wjkTgmJMBmZs0PZjNlqqlcsYM"
+}
+
+headers = {
+    "alg": "RS256",
+    "typ": "JWT",
+    "kid": "9869e446-3489-4516-a83f-ec9214ad94d0"
+}
+
+payload = {
+  "iss": "1657113670",
+  "sub": "1657113670",
+  "aud": "https://api.line.me/",
+  "exp":int(time.time())+(60 * 30),
+  "token_exp": 60 * 60 * 24 * 30
+}
+
+key = RSAAlgorithm.from_jwk(privateKey)
 
 app = Flask(__name__)
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
+line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
+#line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
 handler = WebhookHandler(config['line_bot']['Channel_Secret'])
 client_id = config['imgur_api']['Client_ID']
 client_secret = config['imgur_api']['Client_Secret']
