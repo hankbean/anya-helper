@@ -31,16 +31,16 @@ verAnswer= "回答"
 
 
 parse.uses_netloc.append("postgres")
-#url = parse.urlparse(os.environ["DATABASE_URL"])
+url = parse.urlparse(os.environ["DATABASE_URL"])
 
-""" conn = psycopg2.connect(
+conn = psycopg2.connect(
     database=url.path[1:],
     user=url.username,
     password=url.password,
     host=url.hostname,
     port=url.port
 )
-print ("Opened database successfully") """
+print ("Opened database successfully")
 
 privateKey = {
   "alg": "RS256",
@@ -78,8 +78,8 @@ app = Flask(__name__)
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
-#line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
+#line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
+line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
 handler = WebhookHandler(config['line_bot']['Channel_Secret'])
 client_id = config['imgur_api']['Client_ID']
 client_secret = config['imgur_api']['Client_Secret']
