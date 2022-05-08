@@ -952,6 +952,11 @@ def handle_message(event):
             # 召喚
             #【人名、綽號】(例如[豆豆])
         )
+        cur = conn.cursor()
+        cur.execute(
+            """CREATE DATABASE MESSAGE"""
+        );
+        conn.commit()
         return 0
 
     if event.message.text == "#未開發功能":
