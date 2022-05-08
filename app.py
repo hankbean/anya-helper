@@ -50,12 +50,12 @@ client_secret = config['imgur_api']['Client_Secret']
 album_id = config['imgur_api']['Album_ID']
 API_Get_Image = config['other_api']['API_Get_Image']
 
-cur = conn.cursor()
-cur.execute(
-    """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
-    ("me", "456123", "hello", "1922", "45612" )
-);
-conn.commit()
+# cur = conn.cursor()
+# cur.execute(
+#     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
+#     ("me", "456123", "hello", "1922", "45612" )
+# );
+# conn.commit()
 
 
 @app.route("/callback", methods=['POST'])
