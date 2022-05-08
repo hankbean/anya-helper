@@ -50,10 +50,11 @@ client_secret = config['imgur_api']['Client_Secret']
 album_id = config['imgur_api']['Album_ID']
 API_Get_Image = config['other_api']['API_Get_Image']
 
-
+print ("Opened sex successfully")
 @app.route("/callback", methods=['POST'])
 def callback():
     # get X-Line-Signature header value
+    print("1112221")
     signature = request.headers['X-Line-Signature']
     print("1111111")
     # get request body as text
