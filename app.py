@@ -225,7 +225,7 @@ def ptt_beauty():
     res = rs.get('https://www.ptt.cc/bbs/Beauty/index.html', verify=False)
     soup = BeautifulSoup(res.text, 'html.parser')
     print(soup)
-    all_page_url = soup.select('.btn.wide')[1]['href']
+    all_page_url = soup.select('.btn.wide')[0]['href']
     print("b\n" + all_page_url)
     start_page = get_page_number(all_page_url)
     page_term = 10  # crawler count
