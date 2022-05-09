@@ -226,7 +226,7 @@ def ptt_beauty():
     soup = BeautifulSoup(res.text, 'html.parser')
     all_page_url = soup.select('.btn.wide')[1]['href']
     start_page = get_page_number(all_page_url)
-    page_term = 2  # crawler count
+    page_term = 10  # crawler count
     push_rate = 10  # 推文
     index_list = []
     article_list = []
@@ -321,6 +321,7 @@ def panx():
 
 @handler.add(MessageEvent, message=StickerMessage)
 def handle_sticker_message(event):
+    print("**********")
     ifNum = random.randint(0, 29)
     if int(event.message.package_id) >= 1 and int(event.message.package_id) <= 4 and ifNum == 1:
         line_bot_api.reply_message(
