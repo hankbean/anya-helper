@@ -122,24 +122,24 @@ def apple_news():
 
 
 def get_page_number(content):
-    start_index = content.find('index')
-    end_index = content.find('.html')
-    page_number = content[start_index + 5: end_index]
-    return int(page_number) + 1
+    start_index = content.find('Beauty?pn=')
+    end_index = content.find('&init=0')
+    page_number = content[start_index + 10: end_index]
+    return int(page_number)
 
 
 def craw_page(res, push_rate):
     soup_ = BeautifulSoup(res.text, 'html.parser')
     article_seq = []
-    for r_ent in soup_.find_all(class_="r-ent"):
+    for r_ent in soup_.select('div.row2'):
         try:
             # 先得到每篇文章的篇url
             link = r_ent.find('a')['href']
             if link:
                 # 確定得到url再去抓 標題 以及 推文數
-                title = r_ent.find(class_="title").text.strip()
-                rate = r_ent.find(class_="nrec").text
-                url = 'https://www.ptt.cc' + link
+                title = r_ent.find(class_="titleColor").text.strip()
+                rate = r_ent.find(class_="fgG1").text
+                url = 'https://disp.cc/b/' + link
                 if rate:
                     rate = 100 if rate.startswith('爆') else rate
                     rate = -1 * int(rate[1]) if rate.startswith('X') else rate
@@ -222,18 +222,18 @@ def ptt_gossiping():
 
 def ptt_beauty():
     rs = requests.session()
-    res = rs.get('https://www.ptt.cc/bbs/Beauty/index.html', verify=False)
+    res = rs.get('https://disp.cc/b/Beauty', verify=False)
     soup = BeautifulSoup(res.text, 'html.parser')
-    print(soup.select('.btn.wide'))
-    all_page_url = soup.select('.btn.wide')[1]['href']
+    all_page_url = soup.select('div.topRight a')[4]['href']
     print("b\n" + all_page_url)
     start_page = get_page_number(all_page_url)
-    page_term = 10  # crawler count
-    push_rate = 10  # 推文
+    print(start_page)
+    page_term = 40  # crawler count
+    push_rate = 3  # 推文
     index_list = []
     article_list = []
-    for page in range(start_page, start_page - page_term, -1):
-        page_url = 'https://www.ptt.cc/bbs/Beauty/index{}.html'.format(page)
+    for page in range(start_page, start_page - page_term, -20):
+        page_url = 'https://disp.cc/b/Beauty?pn={}&init=0'.format(page)
         index_list.append(page_url)
 
     # 抓取 文章標題 網址 推文數
