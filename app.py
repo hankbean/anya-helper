@@ -134,7 +134,7 @@ def craw_page(res, push_rate):
     for r_ent in soup_.select('div.row2'):
         try:
             # 先得到每篇文章的篇url
-            link = r_ent.find('a')['href']
+            link = r_ent.find_all('a')[1]['href']
             if link:
                 # 確定得到url再去抓 標題 以及 推文數
                 title = r_ent.find(class_="titleColor").text.strip()
@@ -164,7 +164,7 @@ def crawl_page_gossiping(res):
     for r_ent in soup.find_all(class_="r-ent"):
         try:
             # 先得到每篇文章的篇url
-            link = r_ent.find('a')['href']
+            link = r_ent.find('span.listTitle a')['href']
 
             if link:
                 # 確定得到url再去抓 標題 以及 推文數
