@@ -158,7 +158,7 @@ def craw_page(res, push_rate):
                         'url': url,
                         'rate': rate,
                     })
-                print(article_seq)
+                # print(article_seq)
         except Exception as e:
             # print('crawPage function error:',r_ent.find(class_="title").text.strip())
             print('本文已被刪除', e)
@@ -235,7 +235,7 @@ def ptt_beauty():
     # print("b\n" + all_page_url)
     start_page = get_page_number(all_page_url)
     # print(start_page)
-    page_term = 1000  # crawler count
+    page_term = 500  # crawler count
     push_rate = 10  # 推文
     index_list = []
     article_list = []

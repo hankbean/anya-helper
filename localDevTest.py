@@ -137,7 +137,7 @@ def craw_page(res, push_rate):
             if link:
                 # 確定得到url再去抓 標題 以及 推文數
                 title = r_ent.find(class_="titleColor").text #.strip()
-                print(title)
+                # print(title)
                 url = 'https://disp.cc/b/' + link
                 try:
                     rate = r_ent.find(class_="L9").find(class_="fgG1").text
@@ -149,7 +149,7 @@ def craw_page(res, push_rate):
                 except Exception as e:
                     rate = 0
                     print('無推顯示', e)
-                print(rate)
+                # print(rate)
                 # 比對推文數
                 if int(rate) >= push_rate:
                     article_seq.append({
@@ -157,7 +157,7 @@ def craw_page(res, push_rate):
                         'url': url,
                         'rate': rate,
                     })
-                print(article_seq)
+                # print(article_seq)
         except Exception as e:
             # print('crawPage function error:',r_ent.find(class_="title").text.strip())
             print('本文已被刪除', e)
@@ -231,16 +231,16 @@ def ptt_beauty():
     res = rs.get('https://disp.cc/b/Beauty', verify=False)
     soup = BeautifulSoup(res.text, 'html.parser')
     all_page_url = soup.select('div.topRight a')[4]['href']
-    print("b\n" + all_page_url)
+    # print("b\n" + all_page_url)
     start_page = get_page_number(all_page_url)
-    print(start_page)
-    page_term = 100  # crawler count
-    push_rate = 5  # 推文
+    # print(start_page)
+    page_term = 200  # crawler count
+    push_rate = 10  # 推文
     index_list = []
     article_list = []
     for page in range(start_page, start_page - page_term, -20):
         page_url = 'https://disp.cc/b/Beauty?pn={}&init=0'.format(page)
-        print(page_url)
+        # print(page_url)
         index_list.append(page_url)
 
     # 抓取 文章標題 網址 推文數
@@ -256,7 +256,7 @@ def ptt_beauty():
             article_list += craw_page(res, push_rate)
             # print u'OK_URL:', index
             # time.sleep(0.05)
-        print(article_list)
+        # print(article_list)
     content = ''
     for article in article_list:
         data = '[{} push] {}\n{}\n\n'.format(article.get('rate', None), article.get('title', None),
