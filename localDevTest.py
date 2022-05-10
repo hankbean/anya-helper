@@ -140,7 +140,14 @@ def craw_page(res, push_rate):
                 # print(title)
                 url = 'https://disp.cc/b/' + link
                 try:
-                    rate = r_ent.find(class_="L9").find(class_="fgG1").text
+                    if r_ent.find(class_="L9").find(class_="fgG1"):
+                        rate = r_ent.find(class_="L9").find(class_="fgG1").text
+                    if r_ent.find(class_="L9").find(class_="fgY1"):
+                        rate = r_ent.find(class_="L9").find(class_="fgY1").text
+                    # print(rate)
+                    # print("********")
+                    # rate = int(rate)
+                    # print(rate)
                     if rate:
                         rate = 100 if rate.startswith('爆') else rate
                         rate = -1 * int(rate[1]) if rate.startswith('X') else rate
