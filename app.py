@@ -235,8 +235,8 @@ def ptt_beauty():
     print("b\n" + all_page_url)
     start_page = get_page_number(all_page_url)
     print(start_page)
-    page_term = 100  # crawler count
-    push_rate = 5  # 推文
+    page_term = 1000  # crawler count
+    push_rate = 10  # 推文
     index_list = []
     article_list = []
     for page in range(start_page, start_page - page_term, -20):
