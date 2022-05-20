@@ -1,0 +1,33 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+alembic = "*"
+click = "*"
+httplib2 = "*"
+itsdangerous = "*"
+oauth2 = "*"
+pycparser = "*"
+python-editor = "*"
+requests = "*"
+webassets = "*"
+gunicorn = "*"
+beautifulsoup4 = "*"
+line-bot-sdk = "*"
+imgurpython = "*"
+psycopg2-binary = "*"
+Flask = "*"
+Flask-Assets = "*"
+Flask-Babel = "*"
+Flask-Script = "*"
+Jinja2 = "*"
+Mako = "*"
+MarkupSafe = "*"
+Werkzeug = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"

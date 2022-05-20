@@ -25,9 +25,12 @@ import psycopg2
 verTime = "2022.Apr.03.5" # 版本
 verAnswer= "回答"
 
+config = configparser.ConfigParser()
+config.read("config.ini")
 
 parse.uses_netloc.append("postgres")
 url = parse.urlparse(os.environ["DATABASE_URL"])
+# url = parse.urlparse(config['line_bot']['Channel_Secret'])
 
 conn = psycopg2.connect(
     database=url.path[1:],
@@ -39,8 +42,6 @@ conn = psycopg2.connect(
 print ("Opened database successfully")
 
 app = Flask(__name__)
-config = configparser.ConfigParser()
-config.read("config.ini")
 
 #line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
 line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
