@@ -29,8 +29,10 @@ config = configparser.ConfigParser()
 config.read("config.ini")
 
 parse.uses_netloc.append("postgres")
-url = parse.urlparse(os.environ["DATABASE_URL"])
-# url = parse.urlparse(config['line_bot']['Channel_Secret'])
+# url = parse.urlparse(os.environ["DATABASE_URL"])
+url = parse.urlparse(config["line_bot"]["DATABASE_URL"])
+# url = parse.urlparse("postgres://zzrifkagqkgemk:3af561983d0a4b0d664e076c6ce0d195197aa8bda489a1780ae7a0f85f7a3193@ec2-3-217-113-25.compute-1.amazonaws.com:5432/dcvau9em219tjc")
+
 
 conn = psycopg2.connect(
     database=url.path[1:],
