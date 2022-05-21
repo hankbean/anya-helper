@@ -1,3 +1,4 @@
+from posixpath import split
 import requests
 import re
 import random
@@ -20,6 +21,8 @@ import datetime
 import os
 from urllib import parse
 import psycopg2
+
+import json
 
 
 verTime = "2022.Apr.03.5" # 版本
@@ -967,8 +970,8 @@ def handle_message(event):
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="指令清單: \n\n#占卜\n"+\
-                "anya or 阿妮亞 or 安妮亞\n吃什麼\n不負責任猜題\n#點歌\n#笑話\n妹\n抽正妹\n#呼叫工程師+[反饋內容](開發中\n\n作者\n版本"
+                text="指令清單: \n\n-- #占卜\n"+\
+                "-- anya or 阿妮亞 or 安妮亞\n-- !猜+[4位數字] or !a+[4位數字] (1A2B猜數字遊戲)\n-- 吃什麼\n-- 不負責任猜題\n-- #點歌\n-- #笑話\n-- 妹\n-- 抽正妹\n-- #呼叫工程師+[反饋內容](開發中\n\n-- 作者\n-- 版本"
             )
             # 召喚
             #【人名、綽號】(例如[豆豆])
@@ -1164,36 +1167,6 @@ def handle_message(event):
             for line in f.readlines():
                 text.append(line)
         print(text)
-        answers = [
-            "年少有為-李榮浩",
-            "體面-于文文 (Kelly)",
-            "有一種悲傷-A-Lin",
-            "說散就散-潘嘉麗 & 何維健",
-            "演員-薛之謙",
-            "漂向北方 (feat. 王力宏)-黃明志",
-            "追光者-岑寧兒",
-            "那些你很冒險的夢-林俊傑 JJ Lin",
-            "倒數-G.E.M.鄧紫棋",
-            "告白氣球-周杰倫",
-            "家家酒-家家（JiaJia）",
-            "光年之外-G.E.M.鄧紫棋",
-            "怪美的-蔡依林",
-            "辣台妹 (Hot Chick)-頑童 MJ116",
-            "泡沫-G.E.M.鄧紫棋",
-            "小幸運-田馥甄 (Hebe)",
-            "怎麼了 (What's Wrong)-Eric 周興哲",
-            "生僻字-陳柯宇",
-            "腦公 (Hubby)-蔡依林",
-            "騙吃騙吃 (Pian Jia Pian Jia)-頑童MJ116",
-            "玫瑰少年 (Womxnly)-蔡依林 (Jolin Tsai)",
-            "來自天堂的魔鬼 (Away)-G.E.M.鄧紫棋",
-            "走到飛-熊仔 (Kumachan), 大支 (Dwagie), 呂士軒 (TroutFresh), ØZI, 吳卓源 (Julia Wu), Barry",
-            "親愛的無情孫小美-茄子蛋",
-            "終於勇敢了 (Brave)-袁詠琳 (Cindy Yen)",
-            "再見煙火 (Goodbye Firework)-卓義峯 (Yifeng Zhuo) ",
-            "不為誰而作的歌 (Twilight)-林俊傑 (JJ Lin)",
-            "偉大的渺小-林俊傑 (JJ Lin)"
-        ]
         mesText = text[random.randint(0, len(text)-1)]
         mesTextFinally = mesText.split('\n')[0]
         line_bot_api.reply_message(
@@ -1224,41 +1197,6 @@ def handle_message(event):
 
     if "#呼叫工程師" in event.message.text:
         return 0
-        
-        # print("笑哈哈哈")
-        # answers = [
-        #     "電影大亨決心製作一部有史以來規模最偉大的巨片『我要動用前所未見的陣容來演那戰爭場面。』\n\n他揚言『雙方各用兩萬五千名臨時演員。』\
-        #     \n\n『那好極了！』導演半信半疑地說『可是，我們怎樣付得起那麼多錢給他們呢？』\n\n『計劃的妙處就是，』大亨回答，『我們要用真槍實彈。』",
-        #     "計程車司機闖紅燈，乘客倒抽了一口氣。『別擔心。』司機說，『我哥哥總是這樣。』\n\n過了一個街口，司機在綠燈前停車。\
-        #     \n\n『為什麼現在又停車了？』乘客問\n\n『我哥哥可能從對面開來！』",
-        #     "做父親的帶小兒子到野外露營，要他體驗簡單生活。\n\n父親把兩手伸入山澗，捧起水來時，孩子目瞪口呆喊道『爹，你不會是要喝吧？』\
-        #     \n\n『當然要喝』父親說著就把手裡捧著的水咕嚕喝下肚。\n\n『哎呀，爹』孩子說『我說的不是水，而是水裡的蝌蚪。』",
-        #     "有一天小明和媽媽在客廳看電視，突然門鈴作響，媽媽跑去開門，來了一位陌生男人，這時小明也跟了過來，媽媽便對小明說：『叫爸爸！』\
-        #     \n\n小明心理在想，很奇怪，我為何要叫他爸爸？所以小明不出聲，這時媽媽看小明不出聲，又大聲對小明說：『快叫爸爸！』\
-        #     \n\n小明還是不肯出聲，這時媽媽生氣了，打了小明一巴掌並又對他說：『快叫爸爸！』這時小明只好哭著對陌生人喊：『爸爸........』\
-        #     \n\n這時媽媽哭笑不得地對小明說：『誰叫你叫他爸爸呀！我是叫你去房間叫你爸爸出來繳電費啦！』",
-        #     "在成功嶺集訓的某一天，正在上基本教練時，有一個大頭兵突然尿急，所以就跑過去向班長說：『報告班長，我想上二號。』\
-        #     \n\n結果班長若無其事的大喊一聲：『二號過來，有人想上你！』",
-        #     "丈夫和我走到購物廣場的許願池前。我拋下一個錢幣並許下一個願。\n\n丈夫隨即也從口袋掏出一個錢幣拋下去，我問他許了什麼願。\
-        #     \n\n『我的願望是』他莞爾地說，『我付得起你剛才願望得到那件東西的價錢。』",
-        #     "辦公室的主任做事非常刻板，每有指示，總要寫在紙上，並要下屬簽收。一天，他要在他的房間安裝一排軸架，工人用電鑽在牆壁上鑽孔"\
-        #     +"，聲音非常刺耳。同事剛從外面回來，吃驚的低聲向旁邊的人說：『我的天，他現在要把指示刻在牆壁上了。』",
-        #     "先生十分迷信，一點小事他就心神不寧。\n\n一天，下班回來，他愁眉苦臉地對我說『我的右眼跳了一個下午了，不知是什麼原因？』\
-        #     \n\n『跳！跳！跳！』我怒不可遏，大聲對他吼叫。\n\n他許久沒有作聲，過了一會兒，他笑道：『太太，我知道我的右眼為什麼跳了。』",
-        #     "兩個闊別多年的老同學在街上偶然偶見。\n\n甲開口就說：『你一定結婚了！』乙驚奇地問他是怎麼知道的。\
-        #     \n\n『瞧你的衣服熨得多挺』甲答道『你以前不是這個樣子的』\n\n『可不是？』乙無奈地說，『這是我太太叫我熨的。』",
-        #     "孩子第一天上學回來，父親問他可喜歡上學；\n\n孩子說：『我喜歡去上學，也喜歡放學，可是不喜歡中間的時間。』"
-        # ]
-        # if random.randint(0, 10)==0:
-        #     print("1")
-        #     mesText = "笑屁喔"
-        # else:
-        #     print("2")
-        #     mesText = answers[random.randint(0, len(answers)-1)]
-        # line_bot_api.reply_message(
-        #    event.reply_token,
-        #    TextSendMessage(text=mesText))
-        # return 0
 
     if event.message.text == "侑子的寶物占卜":
 
@@ -1292,6 +1230,59 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text=mesText))
         return 0
+
+    if '!猜' in event.message.text or '!a' in event.message.text:
+        if not os.path.isfile("answer.json"):
+            with open("answer.json", "w") as out_file:
+                json.dump(dict(), out_file, indent=4)
+        
+        with open("answer.json", "r") as in_file:
+            user_dict = json.load(in_file)
+        user_ID = event.source.user_id
+        print(user_dict)
+
+        if user_ID not in user_dict:
+            user_dict[user_ID] = random.sample('1234567890', 4)
+
+        mesText = event.message.text
+        y = mesText.split(' ')[1]
+    
+        if (y.isdigit() == False):
+            message = TextSendMessage(text= "請輸入數字")
+            line_bot_api.reply_message(event.reply_token, message)
+            return 
+        if (len(y) != 4):
+            message = TextSendMessage(text= "字數錯誤")
+            line_bot_api.reply_message(event.reply_token, message)
+            return 
+        if (len(y) != len(set(y))):
+            print(y)
+            message = TextSendMessage(text= "數字禁止重複")
+            line_bot_api.reply_message(event.reply_token, message)
+            return 
+    
+        a = 0
+        b = 0
+        for i in range (len(y)):
+            if(y[i] in user_dict[user_ID]):
+                if(y[i] == user_dict[user_ID][i]):
+                    a += 1
+                else:
+                    b += 1
+        if (a == 4):
+            user_dict[user_ID] = random.sample('1234567890', 4)
+
+        if (a == 4):
+            message = [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
+                       TextSendMessage(text= "你讓我高潮了❤️")]
+            line_bot_api.reply_message(event.reply_token, message)
+        else:
+            message = [TextSendMessage(text= "%d A %d B" % (a, b)), 
+                       TextSendMessage(text= "再用力一點❤️")]
+            line_bot_api.reply_message(event.reply_token, message)
+
+        with open("answer.json", "w") as output:
+            json.dump(user_dict, output, indent=4)        
 
     if event.message.text == '登錄': #功能未完成
         if isinstance(event.source, SourceUser):
