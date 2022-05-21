@@ -962,16 +962,27 @@ def handle_message(event):
     if event.message.text == ".下一頁" :
         return 0
 
-    if event.message.text == "#help" or event.message.text == "說明" or event.message.text == "吃吃" or event.message.text == "anya" or event.message.text == "安妮亞" or event.message.text == "助理":
+    if event.message.text == "#help" or event.message.text == "說明" or event.message.text == "吃吃":
         userid = event.source
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="吃吃沒死，我只是轉生了而已!!\n\n指令清單: \n\n抽 or 牌\n抽牌\n抽大牌\n六芒星\n六芒星說明\n骰子卡\n進階骰子卡\n"+\
-                "吃什麼\n中二\n侑子 or 次元魔女\n靈數占卜\n不負責任猜題\n#點歌\n#講笑話\n\n作者\n版本"
+                text="指令清單: \n\n#占卜\n"+\
+                "anya or 阿妮亞 or 安妮亞\n吃什麼\n不負責任猜題\n#點歌\n#笑話\n妹\n抽正妹\n#呼叫工程師+[反饋內容](開發中\n\n作者\n版本"
             )
             # 召喚
             #【人名、綽號】(例如[豆豆])
+        )
+        return 0
+
+    if event.message.text == "#占卜":
+        userid = event.source
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(
+                text="占卜指令: \n\n抽 or 牌\n抽牌\n抽大牌\n六芒星\n六芒星說明\n骰子卡\n進階骰子卡\n"+\
+                "靈數占卜"
+            )
         )
         return 0
 
@@ -1147,6 +1158,12 @@ def handle_message(event):
     #     return 0
 
     if event.message.text == "#點歌" or event.message.text == "唱歌" or event.message.text == "ktv" or "歌" in event.message.text:
+        text = []
+        path = 'songList.txt'
+        with open(path,"r",encoding='utf-8') as f:
+            for line in f.readlines():
+                text.append(line)
+        print(text)
         answers = [
             "年少有為-李榮浩",
             "體面-于文文 (Kelly)",
@@ -1177,10 +1194,11 @@ def handle_message(event):
             "不為誰而作的歌 (Twilight)-林俊傑 (JJ Lin)",
             "偉大的渺小-林俊傑 (JJ Lin)"
         ]
-        mesText = answers[random.randint(0, len(answers)-1)]
+        mesText = text[random.randint(0, len(text)-1)]
+        mesTextFinally = mesText.split('\n')[0]
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text=mesText))
+            TextSendMessage(text=mesTextFinally))
         return 0
 
     if event.message.text == "#講笑話" or "笑" in event.message.text or "哈" in event.message.text or "呵" in event.message.text or "廠" in event.message.text or "ㄏ" in event.message.text:
@@ -1202,6 +1220,9 @@ def handle_message(event):
             # print("2")
             line_bot_api.reply_message(
                 event.reply_token, image_message)
+        return 0
+
+    if "#呼叫工程師" in event.message.text:
         return 0
         
         # print("笑哈哈哈")
@@ -1438,6 +1459,8 @@ def handle_message(event):
         mesText = answers[index]
         ifNum = random.randint(0, 29)
         # if event.source.user_id != "Ua3c836397c7cb7f0a3df9df7d16e2be1":
+        if "anya" in event.message.text or "安妮亞" in event.message.text or "阿妮亞" in event.message.text or "助理" in event.message.text:
+           ifNum = 0 
         if ifNum == 0:
             cur = conn.cursor()
             cur.execute(
