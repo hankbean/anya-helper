@@ -1268,10 +1268,12 @@ def handle_message(event):
         if not os.path.isfile("answer.json"):
             with open("answer.json", "w") as out_file:
                 json.dump(dict(), out_file, indent=4)
-        
         with open("answer.json", "r") as in_file:
             user_dict = json.load(in_file)
-        user_ID = event.source.user_id
+        if isinstance(event.source, SourceGroup):
+            user_ID = event.source.group_id
+        else:
+            user_ID = event.source.user_id
         print(user_dict)
 
         if user_ID not in user_dict:
