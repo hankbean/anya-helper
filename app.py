@@ -1407,22 +1407,34 @@ def handle_message(event):
                 "😠",
                 "😡"
                 ]
+        textNum = random.randint(0, 1) #text or picture
         index = random.randint(0, len(answers) - 1)
         mesText = answers[index]
         ifNum = random.randint(0, 29)
-        # if event.source.user_id != "Ua3c836397c7cb7f0a3df9df7d16e2be1":
         if "anya" in event.message.text or "安妮亞" in event.message.text or "阿妮亞" in event.message.text or "助理" in event.message.text:
-           ifNum = 0 
+           ifNum = 0 # do 100%
         if ifNum == 0:
-            cur = conn.cursor()
-            cur.execute(
-                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
-                ("me", dbname, mesText, dbtim, dbts )
-            );
-            conn.commit()
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text=mesText))
+            if textNum == 0:
+                cur = conn.cursor()
+                cur.execute(
+                    """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
+                    ("me", dbname, mesText, dbtim, dbts )
+                );
+                conn.commit()
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=mesText))
+            else:
+                client = ImgurClient(client_id, client_secret)
+                images = client.get_album_images("7aHqXX5")
+                index = random.randint(0, len(images) - 1)
+                url = images[index].link
+                image_message = ImageSendMessage(
+                    original_content_url=url,
+                    preview_image_url=url
+                )
+                line_bot_api.reply_message(
+                    event.reply_token, image_message)
         # if event.source.user_id == "Ua3c836397c7cb7f0a3df9df7d16e2be1":
         #     if ifNum == 0:
         #         line_bot_api.reply_message(
