@@ -442,7 +442,9 @@ def handle_message(event):
         if isinstance(event.source, SourceGroup):
             # profile = line_bot_api.get_profile(event.source.group_id)
             dbid = event.source.group_id
-            dbname = "group"
+            dbname = "group" + "_" + event.source.user_id
+            logMes = dbid + " - " + dbname + ": " + event.message.text + "[time: " + str(event.timestamp) + "]"
+            print(logMes)
             # dbtim = str(event.timestamp)
             cur.execute(
                 """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s)""",
@@ -452,7 +454,9 @@ def handle_message(event):
         elif isinstance(event.source, SourceRoom):
             # profile = line_bot_api.get_profile(event.source.room_id)
             dbid = event.source.room_id
-            dbname = "room"
+            dbname = "room" + "_" + event.source.user_id
+            logMes = dbid + " - " + dbname + ": " + event.message.text + "[time: " + str(event.timestamp) + "]"
+            print(logMes)
             # dbtim = str(event.timestamp)
             cur.execute(
                 """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s)""",
