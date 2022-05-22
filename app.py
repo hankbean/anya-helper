@@ -1160,6 +1160,37 @@ def handle_message(event):
     #         TextSendMessage(text=mesText))
     #     return 0
 
+    if event.message.text == "#發牌":
+        valuesNum=['3','4',"5","6","7","8","9","T","J","Q","K","A","2"]
+        suitsNum=['c','d','h','s']
+        cards=[]
+        for value in valuesNum:
+            for suit in suitsNum:
+                card=value+suit
+                # print(card)
+                cards.append(card)
+        print(cards)
+        # hands = ["3c", "Qc", "Js", "Kh", "2h", "5c", "As", "Jd"]
+        suits = {'c':1, 'd': 2, 'h':3, 's':4}
+        values= {'3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, 'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14, '2': 15}
+        # print(sorted(hands, key= lambda c: (values[c[0]],suits[c[1]])))
+        suitsCh = {'c':'梅花', 'd': '方塊', 'h':'紅心', 's':'黑桃'}
+        # outCard = lambda c: suitsCh[c[1]]+c[0]
+
+        hands = random.sample(cards, 17)
+        sortHands = sorted(hands, key= lambda c: (values[c[0]],suits[c[1]]))
+        mesText=[]
+        for sortHand in sortHands:
+            mesText.append(suitsCh[sortHand[1]]+sortHand[0])
+        # print(hands)
+        # ownCard = random.sample(mesText, 17)
+        # print(ownCard)
+        mes = '，'.join(mesText)
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=mes))
+        return 0
+
     if event.message.text == "#點歌" or event.message.text == "唱歌" or event.message.text == "ktv" or "歌" in event.message.text:
         text = []
         path = 'songList.txt'
