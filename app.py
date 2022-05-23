@@ -402,14 +402,16 @@ def handle_message(event):
             "😠",
             "😡"
         ]
+        message = []
         mesText = mesFace[random.randint(0, len(mesFace)-1)]
+        message.append(TextSendMessage(text = mesText))
+        message.append(TextSendMessage(text = "程式有BUG"))
         # ifNum = random.randint(0, 1)
         # if ifNum == 0:
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text = mesText)
+            message
         )
-
         # return 0
     cur = conn.cursor()  
     # cur.execute('''CREATE TABLE MESSAGE
@@ -1035,61 +1037,6 @@ def handle_message(event):
 
         return 0
 
-    # if event.message.text == "豆豆" or event.message.text == "吳浩宇" or event.message.text == "痘痘"  or event.message.text == "豆神":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="我是豆神!!")) 
-    #         # TextSendMessage(text="我是豆神!!\n...\n吃吃精靈是我孩子，不要玩壞她...")) 
-    #     return 0
-
-    # if event.message.text == "祥瑀" or event.message.text == "黃祥瑀":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="約炮小王子")) 
-    #     return 0
-
-    # if event.message.text == "于姿婷" or event.message.text == "黃玥萱":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="烤土司小公主")) 
-    #     return 0
-
-    # if event.message.text == "博榮" or event.message.text == "榮榮":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="封杯小王子")) 
-    #     return 0
-
-    # if event.message.text == "躍萱" or event.message.text == "黃躍萱":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="黃色洨話冠軍錦標賽第一屆傳承人")) 
-    #     return 0
-
-    # if event.message.text == "萱萱":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="你找躍萱還是玥萱")) 
-    #     return 0
-
-    # if event.message.text == "大腸包小腸":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="チンチン大きいです")) 
-    #     return 0
-
-    # if event.message.text == "雅慈":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="她是智障...怎麼了嗎？")) 
-    #     return 0
-
-    # if event.message.text == "文大吃吃" or event.message.text == "吃吃精靈" or event.message.text == "文大吃吃精靈" or event.message.text == "吃吃":
-    #     line_bot_api.reply_message(
-    #         event.reply_token,
-    #         TextSendMessage(text="額咪啊")) 
-    #     return 0
-
     if event.message.text == "六芒星說明":
         line_bot_api.reply_message(
             event.reply_token,
@@ -1275,26 +1222,31 @@ def handle_message(event):
         else:
             user_ID = event.source.user_id
         print(user_dict)
-
+        message = []
         if user_ID not in user_dict:
             user_dict[user_ID] = random.sample('1234567890', 4)
+            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16]))
 
         mesText = event.message.text
+        if not ' ' in mesText:
+            message.append (TextSendMessage(text= "請添加空格"))
+            line_bot_api.reply_message(event.reply_token, message)
+            return 0
         y = mesText.split(' ')[1]
     
         if (y.isdigit() == False):
-            message = TextSendMessage(text= "請輸入數字")
+            message.append (TextSendMessage(text= "請輸入數字"))
             line_bot_api.reply_message(event.reply_token, message)
-            return 
+            return 0
         if (len(y) != 4):
-            message = TextSendMessage(text= "字數錯誤")
+            message.append (TextSendMessage(text= "字數錯誤"))
             line_bot_api.reply_message(event.reply_token, message)
-            return 
+            return 0
         if (len(y) != len(set(y))):
             print(y)
-            message = TextSendMessage(text= "數字禁止重複")
+            message.append (TextSendMessage(text= "數字禁止重複"))
             line_bot_api.reply_message(event.reply_token, message)
-            return 
+            return 0
     
         a = 0
         b = 0
@@ -1305,19 +1257,20 @@ def handle_message(event):
                 else:
                     b += 1
         if (a == 4):
-            user_dict[user_ID] = random.sample('1234567890', 4)
+            del user_dict[user_ID]
 
         if (a == 4):
-            message = [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
+            message += [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
                        TextSendMessage(text= "你讓我高潮了❤️")]
             line_bot_api.reply_message(event.reply_token, message)
         else:
-            message = [TextSendMessage(text= "%d A %d B" % (a, b)), 
+            message += [TextSendMessage(text= "%d A %d B" % (a, b)), 
                        TextSendMessage(text= "再用力一點❤️")]
             line_bot_api.reply_message(event.reply_token, message)
 
         with open("answer.json", "w") as output:
-            json.dump(user_dict, output, indent=4)        
+            json.dump(user_dict, output, indent=4)
+        return 0
 
     if event.message.text == '登錄': #功能未完成
         if isinstance(event.source, SourceUser):
@@ -1435,35 +1388,7 @@ def handle_message(event):
                 )
                 line_bot_api.reply_message(
                     event.reply_token, image_message)
-        # if event.source.user_id == "Ua3c836397c7cb7f0a3df9df7d16e2be1":
-        #     if ifNum == 0:
-        #         line_bot_api.reply_message(
-        #             event.reply_token, [
-        #                 TextSendMessage(
-        #                     text="感恩豆神！讚歎豆神！"
-        #                 ),
-        #                 TextSendMessage(
-        #                     text=mesText
-        #                 )
-        #             ]
-        #         )
-        #     else:
-        #         line_bot_api.reply_message(
-        #             event.reply_token,
-        #             TextSendMessage(
-        #                 text="感恩豆神！讚歎豆神！"
-        #             )
-        #         )
-        # else:
-        #     if ifNum == 0:
-        #         line_bot_api.reply_message(
-        #             event.reply_token,
-        #             TextSendMessage(
-        #                 text=mesText
-        #             )
-        #         )
         return 0
                             
-
 if __name__ == '__main__':
     app.run()
