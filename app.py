@@ -15,8 +15,7 @@ from linebot.exceptions import (
 )
 from linebot.models import *
 
-
-import datetime
+from datetime import datetime,timezone,timedelta
 
 import os
 from urllib import parse
@@ -420,15 +419,37 @@ def handle_message(event):
     #        MES            TEXT     NOT NULL,
     #        TIM        TEXT);''')
     # print ("Table created successfully")
+    
     print("**********")
-    dbtim = datetime.datetime.fromtimestamp(
-                event.timestamp / 1000.0 + 28800
-            ).strftime('%Y-%m-%d %H:%M:%S.%f')
-    dbts = event.timestamp
+    #line time == system time
+    #if not do print
+    # t = time.time()
+    # dt = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
+    lineDt = datetime.fromtimestamp(
+                event.timestamp / 1000.0 #+ 28800
+            ).strftime('%Y-%m-%d %H:%M:%S')
+    # print(dt[0:19]+lineDt[0:19])
+    # print(lineDt[14:19])
+    dtUtc = datetime.utcnow().replace(tzinfo=timezone.utc)
+    dtTw = dtUtc.astimezone(timezone(timedelta(hours=8)))
+    # print (dtUtc)
+    # print ("\n")
+    # print (dtTw)
+    # print(dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19])
+    # if dt[0:19] == lineDt[0:19]:
+    #     dbtim = dt
+    # else:
+    #     dbtim = "false"
+    testttt=datetime.fromtimestamp(1653731044)
+    print(testttt.strftime('%Y-%m-%d %H:%M:%S'))
+    dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
+    # dbts = event.timestamp
+    dbts = dtUtc.timestamp()
     dbmes = event.message.text
+
     if isinstance(event.source, SourceUser):
         profile = line_bot_api.get_profile(event.source.user_id)
-        logMes = profile.display_name + ": " + event.message.text + "[time: " + str(event.timestamp) + "]"
+        logMes = profile.display_name + ": " + event.message.text + " [time:" + dbtim + "]"
         print(logMes)
         # f = open('mesLogaa.txt','a')
         # f.write(logMes)
