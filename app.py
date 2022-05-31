@@ -527,10 +527,21 @@ def handle_message(event):
         images = client.get_album_images("jAqXRhh")#client.get_album_images("l8aRa")
         index = random.randint(0, len(images) - 1)
         url = images[index].link
-        image_message = ImageSendMessage(
+        turn = [
+            "正位",
+            "逆位"
+        ]
+        message = []
+        message.append (ImageSendMessage(
             original_content_url=url,
             preview_image_url=url
-        )
+        ))
+        message.append (TextSendMessage(text= turn[random.randint(0, len(turn)-1)]))
+        line_bot_api.reply_message(event.reply_token, message)
+        # image_message = ImageSendMessage(
+        #     original_content_url=url,
+        #     preview_image_url=url
+        # )
         line_bot_api.reply_message(
             event.reply_token, image_message)
         return 0
