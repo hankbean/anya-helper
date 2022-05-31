@@ -1208,10 +1208,11 @@ def handle_message(event):
         return 0
 
     if "#呼叫工程師" in event.message.text:
+        y = event.message.text.mesText.split(' ')[1]
+        #google 表單
         return 0
 
     if event.message.text == "侑子的寶物占卜":
-
         #占卜問卷
         return 0
 
@@ -1279,7 +1280,6 @@ def handle_message(event):
             message.append (TextSendMessage(text= "數字禁止重複"))
             line_bot_api.reply_message(event.reply_token, message)
             return 0
-    
         a = 0
         b = 0
         for i in range (len(y)):
