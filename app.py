@@ -466,9 +466,8 @@ def handle_message(event):
     lagTime = int(dtTw.strftime('%M')) - int(datetime.fromtimestamp(event.timestamp / 1000.0 ).strftime('%M'))
     if lagTime >= 1 :
         print("lagTime:" + str(lagTime))
-        if lagTime >= 3 :
-            print("quit Webhook redelivery") 
-            return 0
+        print("quit Webhook redelivery") 
+        return 0
 
     if isinstance(event.source, SourceUser):
         profile = line_bot_api.get_profile(event.source.user_id)
