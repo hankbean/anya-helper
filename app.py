@@ -82,7 +82,7 @@ def callback():
     signature = request.headers['X-Line-Signature']
     # get request body as text
     body = request.get_data(as_text=True)
-    print("body:",body)
+    # print("body:",body)
     app.logger.info("Request body: " + body)
     # handle webhook body
     try:
@@ -555,12 +555,6 @@ def handle_message(event):
         ))
         message.append (TextSendMessage(text= turn[random.randint(0, len(turn)-1)]))
         line_bot_api.reply_message(event.reply_token, message)
-        # image_message = ImageSendMessage(
-        #     original_content_url=url,
-        #     preview_image_url=url
-        # )
-        line_bot_api.reply_message(
-            event.reply_token, image_message)
         return 0
     if event.message.text == "抽牌圖test":
         client = ImgurClient(client_id, client_secret)
@@ -1038,7 +1032,7 @@ def handle_message(event):
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(
-                text="占卜指令: \n\n抽 or 牌\n抽牌\n抽大牌\n六芒星\n六芒星說明\n骰子卡\n進階骰子卡\n"+\
+                text="占卜指令: \n\n抽 or 牌(抽大牌塔羅圖)\n抽牌(文字)\n抽大牌(文字)\n六芒星\n六芒星說明\n骰子卡\n進階骰子卡\n"+\
                 "靈數占卜"
             )
         )
