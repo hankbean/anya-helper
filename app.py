@@ -45,6 +45,19 @@ conn = psycopg2.connect(
 )
 print ("Opened database successfully")
 
+""" 
+#CREATE TABLE
+cur = conn.cursor()  
+cur.execute('''CREATE TABLE MESSAGE
+    (mid        SERIAL,
+     ID         TEXT   NOT NULL,
+     NAME       TEXT   NOT NULL,
+     MES        TEXT   NOT NULL,
+     DATETIME   TEXT   NOT NULL,
+     TIMESTAMP  TEXT   NOT NULL);''')
+print ("Table created successfully")
+ """
+
 app = Flask(__name__)
 
 #line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
@@ -413,12 +426,6 @@ def handle_message(event):
         )
         # return 0
     cur = conn.cursor()  
-    # cur.execute('''CREATE TABLE MESSAGE
-    #        (ID TEXT      NOT NULL,
-    #        NAME           TEXT    NOT NULL,
-    #        MES            TEXT     NOT NULL,
-    #        TIM        TEXT);''')
-    # print ("Table created successfully")
     
     print("**********")
     #line time == system time
