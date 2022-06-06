@@ -466,6 +466,10 @@ def handle_message(event):
     lagTime = int(dtTw.strftime('%M')) - int(datetime.fromtimestamp(event.timestamp / 1000.0 ).strftime('%M'))
     if lagTime >= 1 :
         print("lagTime:" + str(lagTime))
+        mesText = "我家網路不好，請再說一遍好不好嘛❤️"
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=mesText))
         print("quit Webhook redelivery") 
         return 0
 
