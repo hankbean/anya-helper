@@ -449,10 +449,11 @@ def handle_message(event):
     # print(dtTw.strftime('%Y-%m-%d %H:%M:%S'))
 
     # dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
-    # dbts = event.timestamp
+    dbtim = lineDt[0:19]
+    dbts = event.timestamp / 1000.0
     # dbts = dtUtc.timestamp()
-    dbtim = 'test'
-    dbts = 'test'
+    # dbtim = 'test'
+    # dbts = 'test'
     dbmes = event.message.text
 
     if isinstance(event.source, SourceUser):
