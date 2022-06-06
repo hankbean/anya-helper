@@ -432,8 +432,8 @@ def handle_message(event):
     # print(lineDt[14:19])
     # dtUtc = datetime.utcnow().replace(tzinfo=timezone.utc) lag too much
 
-    #dtUtc = datetime.now() #.replace(tzinfo=timezone.utc)
-    #dtTw = dtUtc.astimezone(timezone(timedelta(hours=8)))
+    dtUtc = datetime.utcnow().replace(tzinfo=timezone.utc)
+    dtTw = dtUtc.astimezone(timezone(timedelta(hours=8)))
 
     # print (dtUtc)
     # print ("\n")
@@ -448,10 +448,10 @@ def handle_message(event):
     # print(dtUtc.strftime('%Y-%m-%d %H:%M:%S'))
     # print(dtTw.strftime('%Y-%m-%d %H:%M:%S'))
 
-    # dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
-    dbtim = lineDt[0:19]
-    dbts = event.timestamp / 1000.0
-    # dbts = dtUtc.timestamp()
+    dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
+    # dbtim = lineDt[0:19]
+    # dbts = event.timestamp / 1000.0
+    dbts = dtUtc.timestamp()
     # dbtim = 'test'
     # dbts = 'test'
     dbmes = event.message.text
