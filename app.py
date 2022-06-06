@@ -430,8 +430,11 @@ def handle_message(event):
             ).strftime('%Y-%m-%d %H:%M:%S')
     # print(dt[0:19]+lineDt[0:19])
     # print(lineDt[14:19])
-    dtUtc = datetime.utcnow().replace(tzinfo=timezone.utc)
-    dtTw = dtUtc.astimezone(timezone(timedelta(hours=8)))
+    # dtUtc = datetime.utcnow().replace(tzinfo=timezone.utc) lag too much
+
+    #dtUtc = datetime.now() #.replace(tzinfo=timezone.utc)
+    #dtTw = dtUtc.astimezone(timezone(timedelta(hours=8)))
+
     # print (dtUtc)
     # print ("\n")
     # print (dtTw)
@@ -440,11 +443,16 @@ def handle_message(event):
     #     dbtim = dt
     # else:
     #     dbtim = "false"
-    testttt=datetime.fromtimestamp(1653731044)
-    print(testttt.strftime('%Y-%m-%d %H:%M:%S'))
-    dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
+    # testttt=datetime.fromtimestamp(1653731044)
+
+    # print(dtUtc.strftime('%Y-%m-%d %H:%M:%S'))
+    # print(dtTw.strftime('%Y-%m-%d %H:%M:%S'))
+
+    # dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
     # dbts = event.timestamp
-    dbts = dtUtc.timestamp()
+    # dbts = dtUtc.timestamp()
+    dbtim = 'test'
+    dbts = 'test'
     dbmes = event.message.text
 
     if isinstance(event.source, SourceUser):
