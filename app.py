@@ -428,7 +428,7 @@ def handle_message(event):
         # return 0
     cur = conn.cursor()  
     
-    print("**********")
+    print("\n**********")
     #line time == system time
     #if not do print
     # t = time.time()
@@ -463,6 +463,10 @@ def handle_message(event):
     # dbtim = 'test'
     # dbts = 'test'
     dbmes = event.message.text
+    lagTime = int(dtTw.strftime('%M')) - int(datetime.fromtimestamp(event.timestamp / 1000.0 ).strftime('%M'))
+    # print("lagTime:" + str(lagTime))
+    if lagTime >= 1 :
+        return 0
 
     if isinstance(event.source, SourceUser):
         profile = line_bot_api.get_profile(event.source.user_id)
