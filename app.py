@@ -1282,6 +1282,7 @@ def handle_message(event):
         message = []
         if user_ID not in user_dict:
             user_dict[user_ID] = random.sample('1234567890', 4)
+            user_dict[user_ID].append(0)
             message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16]))
 
         mesText = event.message.text
@@ -1307,21 +1308,26 @@ def handle_message(event):
         a = 0
         b = 0
         for i in range (len(y)):
-            if(y[i] in user_dict[user_ID]):
+            if(y[i] in user_dict[user_ID][:4]):
                 if(y[i] == user_dict[user_ID][i]):
                     a += 1
                 else:
                     b += 1
-        if (a == 4):
-            del user_dict[user_ID]
+        user_dict[user_ID][4] += 1
+        # print(user_dict[user_ID][:4])
+        # print("\n")
+        # print(user_dict[user_ID][4])
 
         if (a == 4):
             message += [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
-                       TextSendMessage(text= "你讓我高潮了❤️")]
+                       TextSendMessage(text= "你讓我高潮了❤️"),
+                       TextSendMessage(text= "總共猜了%d次" % user_dict[user_ID][4])]
+            del user_dict[user_ID]
             line_bot_api.reply_message(event.reply_token, message)
         else:
             message += [TextSendMessage(text= "%d A %d B" % (a, b)), 
                        TextSendMessage(text= "再用力一點❤️")]
+                    #    TextSendMessage(text= "猜了%d次" % (user_dict[user_ID][4]))]
             line_bot_api.reply_message(event.reply_token, message)
 
         with open("answer.json", "w") as output:
