@@ -465,6 +465,7 @@ def handle_message(event):
     lagLine = 60
     dbmes = event.message.text
     lagTime = int(dtTw.strftime('%S')) - int(datetime.fromtimestamp(event.timestamp / 1000.0 ).strftime('%S'))
+    print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
     if lagTime >= lagLine :
         print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
         if '!猜' in event.message.text or '!a' in event.message.text:
