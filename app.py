@@ -464,7 +464,7 @@ def handle_message(event):
     # dbts = 'test'
     lagLine = 60
     dbmes = event.message.text
-    lagTime = int(dtTw.strftime('%S')) - int(datetime.fromtimestamp(event.timestamp / 1000.0 ).strftime('%S'))
+    lagTime = dtTw.timestamp() / 1 - event.timestamp / 1000
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
     if lagTime >= lagLine :
         print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
