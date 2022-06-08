@@ -35,7 +35,7 @@ parse.uses_netloc.append("postgres")
 url = parse.urlparse(config["line_bot"]["DATABASE_URL"])
 # url = parse.urlparse("postgres://zzrifkagqkgemk:3af561983d0a4b0d664e076c6ce0d195197aa8bda489a1780ae7a0f85f7a3193@ec2-3-217-113-25.compute-1.amazonaws.com:5432/dcvau9em219tjc")
 
-
+print ("Opening database......")
 conn = psycopg2.connect(
     database=url.path[1:],
     user=url.username,
@@ -466,20 +466,20 @@ def handle_message(event):
     dbmes = event.message.text
     lagTime = dtTw.timestamp() / 1 - event.timestamp / 1000
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
+    if '!猜' in event.message.text or '!a' in event.message.text:
+        lagLine = 5
+        print("lagTime >= lagLine= " + str(lagTime >= lagLine))
+        if lagTime >= lagLine :
+            try:
+                mesText = "我家網路不好，請再說一遍好不好嘛❤️"
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=mesText))
+            except Exception as e:
+                print('token過期，無法回覆訊息\n', e)
+            print("FOR 1A2B, quit Webhook redelivery") 
+            return 0
     if lagTime >= lagLine :
-        print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
-        if '!猜' in event.message.text or '!a' in event.message.text:
-            lagLine = 5
-            if lagTime >= lagLine :
-                try:
-                    mesText = "我家網路不好，請再說一遍好不好嘛❤️"
-                    line_bot_api.reply_message(
-                        event.reply_token,
-                        TextSendMessage(text=mesText))
-                except Exception as e:
-                    print('token過期，無法回覆訊息\n', e)
-                print("FOR 1A2B, quit Webhook redelivery") 
-                return 0
         print("quit Webhook redelivery") 
         return 0
 
