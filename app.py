@@ -1284,7 +1284,7 @@ def handle_message(event):
             user_ID = event.source.group_id
         else:
             user_ID = event.source.user_id
-        print(user_dict)
+        # print(user_dict)
         message = []
         if user_ID not in user_dict:
             user_dict[user_ID] = random.sample('1234567890', 4)
@@ -1307,7 +1307,6 @@ def handle_message(event):
             line_bot_api.reply_message(event.reply_token, message)
             return 0
         if (len(y) != len(set(y))):
-            print(y)
             message.append (TextSendMessage(text= "數字禁止重複"))
             line_bot_api.reply_message(event.reply_token, message)
             return 0
@@ -1332,10 +1331,10 @@ def handle_message(event):
             line_bot_api.reply_message(event.reply_token, message)
         else:
             message += [TextSendMessage(text= "%d A %d B" % (a, b)), 
-                       TextSendMessage(text= "再用力一點❤️")]
+                       TextSendMessage(text= "再用力一點❤️(%d" % (user_dict[user_ID][4]))]
                     #    TextSendMessage(text= "猜了%d次" % (user_dict[user_ID][4]))]
             line_bot_api.reply_message(event.reply_token, message)
-
+        print(user_dict)
         with open("answer.json", "w") as output:
             json.dump(user_dict, output, indent=4)
         return 0
