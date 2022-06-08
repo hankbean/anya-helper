@@ -462,18 +462,23 @@ def handle_message(event):
     dbts = dtUtc.timestamp()
     # dbtim = 'test'
     # dbts = 'test'
+    lagLine = 60
     dbmes = event.message.text
-    lagTime = int(dtTw.strftime('%M')) - int(datetime.fromtimestamp(event.timestamp / 1000.0 ).strftime('%M'))
-    if lagTime >= 1 :
+    lagTime = int(dtTw.strftime('%S')) - int(datetime.fromtimestamp(event.timestamp / 1000.0 ).strftime('%S'))
+    if lagTime >= lagLine :
         print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
-        try:
-            if '!猜' in event.message.text or '!a' in event.message.text:
-                mesText = "我家網路不好，請再說一遍好不好嘛❤️"
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text=mesText))
-        except Exception as e:
-            print('token過期，無法回覆訊息\n', e)
+        if '!猜' in event.message.text or '!a' in event.message.text:
+            lagLine = 5
+            if lagTime >= lagLine :
+                try:
+                    mesText = "我家網路不好，請再說一遍好不好嘛❤️"
+                    line_bot_api.reply_message(
+                        event.reply_token,
+                        TextSendMessage(text=mesText))
+                except Exception as e:
+                    print('token過期，無法回覆訊息\n', e)
+                print("FOR 1A2B, quit Webhook redelivery") 
+                return 0
         print("quit Webhook redelivery") 
         return 0
 
