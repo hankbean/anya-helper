@@ -35,7 +35,7 @@ parse.uses_netloc.append("postgres")
 url = parse.urlparse(config["line_bot"]["DATABASE_URL"])
 # url = parse.urlparse("postgres://zzrifkagqkgemk:3af561983d0a4b0d664e076c6ce0d195197aa8bda489a1780ae7a0f85f7a3193@ec2-3-217-113-25.compute-1.amazonaws.com:5432/dcvau9em219tjc")
 
-print ("Opening database......")
+# print ("Opening database......")
 conn = psycopg2.connect(
     database=url.path[1:],
     user=url.username,
@@ -384,8 +384,6 @@ def handle_sticker_message(event):
             sticker_id=sid)
         )
    
-   
-
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     if event.message.type == "sticker":
@@ -429,45 +427,21 @@ def handle_message(event):
     cur = conn.cursor()  
     
     print("\n**********")
-    #line time == system time
-    #if not do print
-    # t = time.time()
-    # dt = datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S')
-    lineDt = datetime.fromtimestamp(
-                event.timestamp / 1000.0 #+ 28800
-            ).strftime('%Y-%m-%d %H:%M:%S')
-    # print(dt[0:19]+lineDt[0:19])
-    # print(lineDt[14:19])
-    # dtUtc = datetime.utcnow().replace(tzinfo=timezone.utc) lag too much
 
+    lineDt = datetime.fromtimestamp(
+                event.timestamp / 1000.0 
+            ).strftime('%Y-%m-%d %H:%M:%S')
     dtUtc = datetime.utcnow().replace(tzinfo=timezone.utc)
     dtTw = dtUtc.astimezone(timezone(timedelta(hours=8)))
-
-    # print (dtUtc)
-    # print ("\n")
-    # print (dtTw)
-    # print(dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19])
-    # if dt[0:19] == lineDt[0:19]:
-    #     dbtim = dt
-    # else:
-    #     dbtim = "false"
-    # testttt=datetime.fromtimestamp(1653731044)
-
-    # print(dtUtc.strftime('%Y-%m-%d %H:%M:%S'))
-    # print(dtTw.strftime('%Y-%m-%d %H:%M:%S'))
-
     dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
-    # dbtim = lineDt[0:19]
-    # dbts = event.timestamp / 1000.0
     dbts = dtUtc.timestamp()
-    # dbtim = 'test'
-    # dbts = 'test'
-    lagLine = 60
+    #用line時間去驗證是否重複記錄訊息(伺服器)
+    lagLine = 100 #超過100秒的訊息直接用http200終止
     dbmes = event.message.text
     lagTime = dtTw.timestamp() / 1 - event.timestamp / 1000
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
     if '!猜' in event.message.text or '!a' in event.message.text:
-        lagLine = 5
+        lagLine = 5 #1A2Blag超過5秒就直接終止
         print("lagTime >= lagLine= " + str(lagTime >= lagLine))
         if lagTime >= lagLine :
             try:
@@ -481,7 +455,7 @@ def handle_message(event):
             return 0
     if lagTime >= lagLine :
         print("quit Webhook redelivery") 
-        return 0
+        return 0 #line會收到http200終止訊號，防止Webhook redelivery無限
 
     if isinstance(event.source, SourceUser):
         profile = line_bot_api.get_profile(event.source.user_id)
