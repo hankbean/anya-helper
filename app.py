@@ -471,7 +471,7 @@ def handle_message(event):
         print("lagTime >= lagLine= " + str(lagTime >= lagLine))
         if lagTime >= lagLine :
             try:
-                mesText = "我家網路不好，請再說一遍好不好嘛❤️"
+                mesText = "我家網路不好，請再說一遍好不好嘛❤️(lag超過5秒就是訊息被吃掉了"
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text=mesText))
@@ -1289,7 +1289,7 @@ def handle_message(event):
         if user_ID not in user_dict:
             user_dict[user_ID] = random.sample('1234567890', 4)
             user_dict[user_ID].append(0)
-            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16]))
+            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16] + "(lag超過5秒就是訊息被吃掉了"))
 
         mesText = event.message.text
         if not ' ' in mesText:
