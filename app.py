@@ -386,48 +386,7 @@ def handle_sticker_message(event):
    
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    if event.message.type == "sticker":
-        print ("say hiiiiiii")
-        mesFace = [
-            "😁",
-            "😂",
-            "😃",
-            "😄",
-            "😅",
-            "😆",
-            "😉",
-            "😊",
-            "😋",
-            "😌",
-            "😍",
-            "😏",
-            "😒",
-            "😓",
-            "😔",
-            "😖",
-            "😘",
-            "😚",
-            "😜",
-            "😝",
-            "😞",
-            "😠",
-            "😡"
-        ]
-        message = []
-        mesText = mesFace[random.randint(0, len(mesFace)-1)]
-        message.append(TextSendMessage(text = mesText))
-        message.append(TextSendMessage(text = "程式有BUG"))
-        # ifNum = random.randint(0, 1)
-        # if ifNum == 0:
-        line_bot_api.reply_message(
-            event.reply_token,
-            message
-        )
-        # return 0
-    cur = conn.cursor()  
-    
     print("\n**********")
-
     lineDt = datetime.fromtimestamp(
                 event.timestamp / 1000.0 
             ).strftime('%Y-%m-%d %H:%M:%S')
@@ -456,7 +415,7 @@ def handle_message(event):
     if lagTime >= lagLine :
         print("quit Webhook redelivery") 
         return 0 #line會收到http200終止訊號，防止Webhook redelivery無限
-
+    cur = conn.cursor() 
     if isinstance(event.source, SourceUser):
         profile = line_bot_api.get_profile(event.source.user_id)
         logMes = profile.display_name + ": " + event.message.text + " [time:" + dbtim + "]"
