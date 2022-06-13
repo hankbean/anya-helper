@@ -359,6 +359,15 @@ def panx():
         content += '{}\n{}\n\n'.format(title, link)
     return content
 
+# def sheet(self):
+#     #連接sheet
+#     auth_json_path = 'credentials.json'
+#     gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
+#     credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
+#     gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
+#     spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
+#     return gss_client.open_by_key(spreadsheet_key).sheet1
+
 @handler.add(MessageEvent, message=StickerMessage)
 def handle_sticker_message(event):
     print("**********")
@@ -398,7 +407,10 @@ def handle_message(event):
     dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
     dbts = dtUtc.timestamp()
     #用line時間去驗證是否重複記錄訊息(伺服器)
-    lagLine = 100 #超過100秒的訊息直接用http200終止
+    # lagLine = 100 #超過100秒的訊息直接用http200終止
+    lagLine = 61
+    #未加入 超過60秒而且對比資料庫最後一筆是一樣的就終止，因為webhook redelivery過60秒重新發一次
+
     dbmes = event.message.text
     lagTime = dtTw.timestamp() / 1 - event.timestamp / 1000
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
@@ -463,6 +475,14 @@ def handle_message(event):
     print("event.reply_token:", event.reply_token)
     print("event.source.user_id:", event.source.user_id)
     # conn.close()
+
+    #連接sheet
+    auth_json_path = 'credentials.json'
+    gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
+    gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
+    spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
+    sheet = gss_client.open_by_key(spreadsheet_key).sheet1
 
     if event.message.text == "eyny":
         content = eyny_movie()
@@ -1275,26 +1295,24 @@ def handle_message(event):
             json.dump(user_dict, output, indent=4)
         return 0
 
-    if '報名' in event.message.text:
-        #連接sheet
-        auth_json_path = 'credentials.json'
-        gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
-        gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
-        spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
-        sheet = gss_client.open_by_key(spreadsheet_key).sheet1
-        # de 宣告
-        testList=[dbid, dbname, dbmes, dbtim, dbts]
-        sheet.append_row(testList)
+    if '報名' in event.message.text and ' ' in event.message.text:
+        # testList=[dbid, dbname, dbmes, dbtim, dbts]
+        mesText = event.message.text
+        try:
+            textContent = [mesText.split(' ')[1],mesText.split(' ')[2]]
+        except Exception as e:
+            print('無空格\n', e)
+            line_bot_api.reply_message(event.reply_token,TextMessage(text="無空格"))
+            return 0
+        sheet.append_row(textContent)
+        line_bot_api.reply_message(event.reply_token,TextMessage(text="添加成功"))
+        return 0
+
+    if event.message.text == '報名表':
+        line_bot_api.reply_message(event.reply_token,TextMessage(text="https://docs.google.com/spreadsheets/d/1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c/edit?usp=sharing"))
         return 0
 
     if '加歌' in event.message.text:
-        auth_json_path = 'credentials.json'
-        gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
-        gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
-        spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
-        sheet = gss_client.open_by_key(spreadsheet_key).sheet1
         return 0
     
     if event.message.text == '歌單':
