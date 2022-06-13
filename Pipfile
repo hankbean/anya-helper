@@ -26,6 +26,8 @@ Jinja2 = "*"
 Mako = "*"
 MarkupSafe = "*"
 Werkzeug = "*"
+gspread = "*"
+oauth2client = "*"
 
 [dev-packages]
 

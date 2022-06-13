@@ -14,7 +14,7 @@ from linebot.exceptions import (
     InvalidSignatureError
 )
 from linebot.models import *
-
+# 校時系統使用
 from datetime import datetime,timezone,timedelta
 
 import os
@@ -22,6 +22,9 @@ from urllib import parse
 import psycopg2
 
 import json
+# google sheet使用
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 
 verTime = "2022.Apr.03.5" # 版本
@@ -1270,6 +1273,31 @@ def handle_message(event):
         print(user_dict)
         with open("answer.json", "w") as output:
             json.dump(user_dict, output, indent=4)
+        return 0
+
+    if '報名' in event.message.text:
+        #連接sheet
+        auth_json_path = 'credentials.json'
+        gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
+        gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
+        spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
+        sheet = gss_client.open_by_key(spreadsheet_key).sheet1
+        # de 宣告
+        testList=[dbid, dbname, dbmes, dbtim, dbts]
+        sheet.append_row(testList)
+        return 0
+
+    if '加歌' in event.message.text:
+        auth_json_path = 'credentials.json'
+        gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
+        gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
+        spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
+        sheet = gss_client.open_by_key(spreadsheet_key).sheet1
+        return 0
+    
+    if event.message.text == '歌單':
         return 0
 
     if event.message.text == '登錄': #功能未完成
