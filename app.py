@@ -484,8 +484,32 @@ def handle_message(event):
     gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
     credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
     gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
+    #可切割做不同資料表
     spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
     sheet = gss_client.open_by_key(spreadsheet_key)
+
+    # 搜尋用戶 如果無此用戶 則註冊
+    userRowNum = 0
+    haveNum = 0
+    for i in range(100):
+        try: # 尋找用戶存檔，找到暫存入緩存中
+            if sheet.worksheet('用戶').row_values(i+1)[0] == str(event.source.user_id):
+                haveNum = 1
+                userRowNum = i+1
+                break
+        except Exception as e:
+            print('空？', e)
+            break
+            
+    # 進行註冊
+    if haveNum == 0 and isinstance(event.source, SourceUser):
+        textContent = []
+        textContent.append(event.source.user_id)
+        textContent.append(profile.display_name)
+        textContent.append(0)
+        sheet.worksheet('用戶').append_row(textContent)
+        line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  新用戶註冊成功'))
+        return 0
 
     if event.message.text == "eyny":
         content = eyny_movie()
@@ -1312,8 +1336,23 @@ def handle_message(event):
         line_bot_api.reply_message(event.reply_token,TextMessage(text="添加成功"))
         return 0
 
-    if event.message.text == '報名表':
-        line_bot_api.reply_message(event.reply_token,TextMessage(text="https://docs.google.com/spreadsheets/d/1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c/edit?usp=sharing"))
+    if '簽到' in event.message.text and ' ' in event.message.text:
+        # testList=[dbid, dbname, dbmes, dbtim, dbts]
+        sh = sheet.worksheet('簽到表')
+        mesText = event.message.text
+        try:
+            textContent = [mesText.split(' ')[1],mesText.split(' ')[2]]
+        except Exception as e:
+            print('無空格\n', e)
+            line_bot_api.reply_message(event.reply_token,TextMessage(text="無空格"))
+            return 0
+        textContent.append(sheet.worksheet('用戶').row_values(userRowNum)[1])
+        sh.append_row(textContent)
+        line_bot_api.reply_message(event.reply_token,TextMessage(text="添加成功"))
+        return 0
+
+    if event.message.text == '簽到表':
+        line_bot_api.reply_message(event.reply_token,TextMessage(text="https://docs.google.com/spreadsheets/d/1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c/edit#gid=1198036521"))
         return 0
 
     if '加歌' in event.message.text:
