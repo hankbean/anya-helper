@@ -408,7 +408,7 @@ def handle_message(event):
     dbts = dtUtc.timestamp()
     #用line時間去驗證是否重複記錄訊息(伺服器)
     # lagLine = 100 #超過100秒的訊息直接用http200終止
-    lagLine = 61
+    lagLine = 300
     #未加入 超過60秒而且對比資料庫最後一筆是一樣的就終止，因為webhook redelivery過60秒重新發一次
     # 或是直接取消webhook redelivery功能？
 
@@ -416,6 +416,16 @@ def handle_message(event):
 
     dbmes = event.message.text
     lagTime = dtTw.timestamp() / 1 - event.timestamp / 1000
+    # 如果message重複則不記錄
+    cur = conn.cursor()
+    cur.execute("""SELECT * FROM message WHERE datetime = %s ;""",(dbtim,))
+    rows = cur.fetchall()
+    for row in rows:
+        if dbmes == str(row[3]):
+            print("same message, quit Webhook redelivery") 
+            return 0
+    conn.commit()
+
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
     if '!猜' in event.message.text or '!a' in event.message.text:
         lagLine = 5 #1A2Blag超過5秒就直接終止
@@ -430,6 +440,7 @@ def handle_message(event):
                 print('token過期，無法回覆訊息\n', e)
             print("FOR 1A2B, quit Webhook redelivery") 
             return 0
+    
     if lagTime >= lagLine :
         print("quit Webhook redelivery") 
         return 0 #line會收到http200終止訊號，防止Webhook redelivery無限
