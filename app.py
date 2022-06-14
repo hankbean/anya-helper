@@ -410,6 +410,9 @@ def handle_message(event):
     # lagLine = 100 #超過100秒的訊息直接用http200終止
     lagLine = 61
     #未加入 超過60秒而且對比資料庫最後一筆是一樣的就終止，因為webhook redelivery過60秒重新發一次
+    # 或是直接取消webhook redelivery功能？
+
+    #直接搜尋資料庫裡有無同樣記錄，5分鐘後再終止webhook redelivery
 
     dbmes = event.message.text
     lagTime = dtTw.timestamp() / 1 - event.timestamp / 1000
@@ -482,7 +485,7 @@ def handle_message(event):
     credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
     gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
     spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
-    sheet = gss_client.open_by_key(spreadsheet_key).sheet1
+    sheet = gss_client.open_by_key(spreadsheet_key)
 
     if event.message.text == "eyny":
         content = eyny_movie()
@@ -995,7 +998,7 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(
                 text="指令清單: \n\n-- #占卜\n"+\
-                "-- anya or 阿妮亞 or 安妮亞\n-- !猜 + [4位數字] or !a + [4位數字] (1A2B猜數字遊戲)\n-- 吃什麼\n-- 不負責任猜題\n-- #點歌\n-- #笑話\n-- 妹\n-- 抽正妹\n-- 中二\n-- #發牌 (開發中\n-- #呼叫工程師+[反饋內容] (開發中\n\n-- 作者\n-- 版本"
+                "-- anya or 阿妮亞 or 安妮亞\n-- !猜 + [4位數字] or !a + [4位數字] (1A2B猜數字遊戲)\n-- 加歌 + [歌名]\n-- 歌單\n-- 吃什麼\n-- 不負責任猜題\n-- 點歌 or 唱歌 or ktv\n-- #笑話\n-- 妹\n-- 抽正妹\n-- 中二\n-- #發牌 (開發中\n-- #呼叫工程師+[反饋內容] (開發中\n\n-- 作者\n-- 版本"
             )
             # 召喚
             #【人名、綽號】(例如[豆豆])
@@ -1160,7 +1163,7 @@ def handle_message(event):
             TextSendMessage(text=mes))
         return 0
 
-    if event.message.text == "#點歌" or event.message.text == "唱歌" or event.message.text == "ktv" or "歌" in event.message.text:
+    if event.message.text == "點歌" or event.message.text == "唱歌" or event.message.text == "ktv":# or "歌" in event.message.text:
         text = []
         path = 'songList.txt'
         with open(path,"r",encoding='utf-8') as f:
@@ -1297,6 +1300,7 @@ def handle_message(event):
 
     if '報名' in event.message.text and ' ' in event.message.text:
         # testList=[dbid, dbname, dbmes, dbtim, dbts]
+        sh = sheet.worksheet('報名表')
         mesText = event.message.text
         try:
             textContent = [mesText.split(' ')[1],mesText.split(' ')[2]]
@@ -1304,7 +1308,7 @@ def handle_message(event):
             print('無空格\n', e)
             line_bot_api.reply_message(event.reply_token,TextMessage(text="無空格"))
             return 0
-        sheet.append_row(textContent)
+        sh.append_row(textContent)
         line_bot_api.reply_message(event.reply_token,TextMessage(text="添加成功"))
         return 0
 
@@ -1313,11 +1317,31 @@ def handle_message(event):
         return 0
 
     if '加歌' in event.message.text:
+        sh = sheet.worksheet('歌單')
+        mesText = event.message.text
+        try:
+            textContentSplit = mesText.split(' ')[1:]
+            if textContentSplit[0]=='':
+                print('格式有誤')
+                line_bot_api.reply_message(event.reply_token,TextMessage(text="格式有誤"))
+                return 0
+            textContent = [" ".join(textContentSplit)]
+            textContent.append(dbid)
+            textContent.append(dbtim)
+
+        except Exception as e:
+            print('無空格\n', e)
+            line_bot_api.reply_message(event.reply_token,TextMessage(text="無空格"))
+            return 0
+        sh.append_row(textContent)
+        line_bot_api.reply_message(event.reply_token,TextMessage(text="添加成功"))
         return 0
     
     if event.message.text == '歌單':
+        line_bot_api.reply_message(event.reply_token,TextMessage(text="https://docs.google.com/spreadsheets/d/1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c/edit#gid=1246252573"))
         return 0
-
+    #登錄不用if 直接進去google表單 回報確認登錄
+    #遊戲進度 以及 設定一樣模式
     if event.message.text == '登錄': #功能未完成
         if isinstance(event.source, SourceUser):
             profile = line_bot_api.get_profile(event.source.user_id)
