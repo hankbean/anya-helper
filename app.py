@@ -47,6 +47,7 @@ conn = psycopg2.connect(
     port=url.port
 )
 print ("Opened database successfully")
+cur = conn.cursor()
 
 """ 
 #CREATE TABLE
@@ -406,18 +407,15 @@ def handle_message(event):
     dtTw = dtUtc.astimezone(timezone(timedelta(hours=8)))
     dbtim = dtTw.strftime('%Y-%m-%d %H:')+lineDt[14:19]
     dbts = dtUtc.timestamp()
+    
+    lagLine = 1000 # 超過1000秒的訊息直接用http200終止
+    #webhook redelivery過60秒重新發一次
     #用line時間去驗證是否重複記錄訊息(伺服器)
-    # lagLine = 100 #超過100秒的訊息直接用http200終止
-    lagLine = 300
-    #未加入 超過60秒而且對比資料庫最後一筆是一樣的就終止，因為webhook redelivery過60秒重新發一次
-    # 或是直接取消webhook redelivery功能？
-
     #直接搜尋資料庫裡有無同樣記錄，5分鐘後再終止webhook redelivery
-
     dbmes = event.message.text
     lagTime = dtTw.timestamp() / 1 - event.timestamp / 1000
     # 如果message重複則不記錄
-    cur = conn.cursor()
+    # cur = conn.cursor()
     cur.execute("""SELECT * FROM message WHERE datetime = %s ;""",(dbtim,))
     rows = cur.fetchall()
     for row in rows:
@@ -427,24 +425,12 @@ def handle_message(event):
     conn.commit()
 
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
-    if '!猜' in event.message.text or '!a' in event.message.text:
-        lagLine = 5 #1A2Blag超過5秒就直接終止
-        print("lagTime >= lagLine= " + str(lagTime >= lagLine))
-        if lagTime >= lagLine :
-            try:
-                mesText = "我家網路不好，請再說一遍好不好嘛❤️(lag超過5秒就是訊息被吃掉了"
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    TextSendMessage(text=mesText))
-            except Exception as e:
-                print('token過期，無法回覆訊息\n', e)
-            print("FOR 1A2B, quit Webhook redelivery") 
-            return 0
+    
     
     if lagTime >= lagLine :
         print("quit Webhook redelivery") 
         return 0 #line會收到http200終止訊號，防止Webhook redelivery無限
-    cur = conn.cursor() 
+    # cur = conn.cursor() 
     if isinstance(event.source, SourceUser):
         profile = line_bot_api.get_profile(event.source.user_id)
         logMes = profile.display_name + ": " + event.message.text + " [time:" + dbtim + "]"
@@ -455,9 +441,9 @@ def handle_message(event):
         dbname = profile.display_name
         str(event.timestamp)
         cur.execute(
-            """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
+            """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s);""",
             (dbid, dbname, dbmes, dbtim, dbts )
-        );
+        )
         conn.commit()
     else:
         if isinstance(event.source, SourceGroup):
@@ -480,10 +466,16 @@ def handle_message(event):
             print(logMes)
             # dbtim = str(event.timestamp)
             cur.execute(
-                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s)""",
+                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s);""",
                 (dbid, dbname, dbmes, dbtim, dbts )
-            );
+            )
+            cur.execute(
+                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s);""",
+                (dbid, 'me', '現已不支援Line Room模式', dbtim, dbts )
+            )
             conn.commit()
+            line_bot_api.reply_message(event.reply_token,TextMessage(text='現已不支援Line Room模式'))
+            return 0
 
     print("event.message.text:", event.message.text)
     print("event.reply_token:", event.reply_token)
@@ -501,17 +493,39 @@ def handle_message(event):
 
     # 搜尋用戶 如果無此用戶 則註冊
     userRowNum = 0
+    memberRowNum = 0
     haveNum = 0
-    for i in range(100):
-        try: # 尋找用戶存檔，找到暫存入緩存中
-            if sheet.worksheet('用戶').row_values(i+1)[0] == str(event.source.user_id):
-                haveNum = 1
-                userRowNum = i+1
+    
+    if isinstance(event.source, SourceUser):
+        i = 0
+        for rows in sheet.worksheet('用戶').get_all_values():
+            # print(rows)
+            try: # 尋找用戶存檔，找到暫存入緩存中
+                if rows[0] == str(event.source.user_id):
+                    haveNum = 1
+                    memberRowNum = i+1
+                    userRowNum = i+1
+                    break
+                i += 1
+            except Exception as e:
+                print('搜尋用戶為空？', e)
                 break
-        except Exception as e:
-            print('空？', e)
-            break
-            
+    elif isinstance(event.source, SourceGroup):
+        i = 0
+        for rows in sheet.worksheet('用戶').get_all_values():
+            try: # 尋找用戶存檔，找到暫存入緩存中
+                if rows[0] == str(event.source.user_id):
+                    memberRowNum = i+1
+                if rows[0] == str(event.source.group_id):
+                    haveNum = 1
+                    userRowNum = i+1
+                i += 1
+            except Exception as e:
+                print('搜尋群組為空？', e)
+                break
+    
+    # print('userRowNum'+str(userRowNum))
+    # print('memberRowNum'+str(memberRowNum))
     # 進行註冊
     if haveNum == 0 and isinstance(event.source, SourceUser):
         textContent = []
@@ -521,6 +535,38 @@ def handle_message(event):
         sheet.worksheet('用戶').append_row(textContent)
         line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  新用戶註冊成功'))
         return 0
+
+    if haveNum == 0 and isinstance(event.source, SourceGroup):
+        textContent = []
+        textContent.append(event.source.group_id)
+        access_token = config['line_bot']['Channel_Access_Token']
+        # get group_name from line伺服器
+        headers = {"content-type": "application/json; charset=UTF-8",'Authorization':'Bearer {}'.format(access_token)}
+        url = 'https://api.line.me/v2/bot/group/' + event.source.group_id + '/summary'
+        response = requests.get(url, headers=headers)
+        response = response.json()
+        group_name = response['groupName']
+
+        textContent.append(group_name)
+        # textContent.append('group')
+        textContent.append(1)
+        sheet.worksheet('用戶').append_row(textContent)
+        line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+group_name+'的大家  新群組註冊成功'))
+        return 0
+
+    if '!猜' in event.message.text or '!a' in event.message.text or sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
+        lagLine = 5 #1A2Blag超過5秒就直接終止
+        print("lagTime >= lagLine= " + str(lagTime >= lagLine))
+        if lagTime >= lagLine :
+            try:
+                mesText = "我家網路不好，請再說一遍好不好嘛❤️(lag超過5秒就是訊息被吃掉了"
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=mesText))
+            except Exception as e:
+                print('token過期，無法回覆訊息  #  ', e)
+            print("FOR 1A2B, quit Webhook redelivery") 
+            return 0
 
     if event.message.text == "eyny":
         content = eyny_movie()
@@ -845,7 +891,7 @@ def handle_message(event):
             mesText = "占卜結果: " +         "\n            " + cardList[0] + "\n" + cardList[4] +\
                 "          " + cardList[5] + "\n            " + cardList[6] + "\n" + cardList[2] +\
                 "          " + cardList[1] + "\n            " + cardList[3] + "\n\n全局暗示: "+ cardList[7]
-            cur = conn.cursor()
+            # cur = conn.cursor()
             cur.execute(
                 """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
                 ("me", dbname, mesText, dbtim, dbts )
@@ -861,7 +907,7 @@ def handle_message(event):
             else:
                 mesText = turn[random.randint(0, len(turn)-1)] + minorArcanaName[random.randint(0, len(minorArcanaName)-1)] +\
                     minorArcanaNum[random.randint(0, len(minorArcanaNum)-1)]
-            cur = conn.cursor()
+            # cur = conn.cursor()
             cur.execute(
                 """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
                 ("me", dbname, mesText, dbtim, dbts )
@@ -889,7 +935,7 @@ def handle_message(event):
         lookNum = random.randint(0, 9)
         realityNum = random.randint(0, 9)
         mesText = "外在的靈數: " + str(lookNum) + "\n實際的靈數: " + str(realityNum)
-        cur = conn.cursor()
+        # cur = conn.cursor()
         cur.execute(
             """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
             ("me", dbname, mesText, dbtim, dbts )
@@ -950,7 +996,7 @@ def handle_message(event):
             "12宮"
         ] 
         mesText = star[starNum] + "，" + sign[signNum] + "，" + palace[palaceNum]
-        cur = conn.cursor()
+        # cur = conn.cursor()
         cur.execute(
             """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
             ("me", dbname, mesText, dbtim, dbts )
@@ -993,7 +1039,7 @@ def handle_message(event):
             "宮\n水星: " + str(qNum+1) + "宮    金星: " + str(wNum+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
             str(rNum+1) + "宮\n土星: " + str(tNum+1) + "宮    天王星: " + str(yNum+1) + "宮\n海王星: " +\
             str(uNum+1) + "宮    冥王星: " + str(iNum+1) + "宮";
-        cur = conn.cursor()
+        # cur = conn.cursor()
         cur.execute(
             """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
             ("me", dbname, mesText, dbtim, dbts )
@@ -1013,7 +1059,7 @@ def handle_message(event):
             "我也不知道"
         ] 
         mesText = str(answers[random.randint(0, len(answers)-1)])
-        cur = conn.cursor()
+        # cur = conn.cursor()
         cur.execute(
             """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
             ("me", dbname, mesText, dbtim, dbts )
@@ -1257,7 +1303,7 @@ def handle_message(event):
             # "侑子的手帕(鳥)"
         ]
         mesText = answers[random.randint(0, len(answers)-1)]
-        cur = conn.cursor()
+        # cur = conn.cursor()
         cur.execute(
             """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
             ("me", dbname, mesText, dbtim, dbts )
@@ -1268,7 +1314,82 @@ def handle_message(event):
             TextSendMessage(text=mesText))
         return 0
 
-    if '!猜' in event.message.text or '!a' in event.message.text:
+    if event.message.text == '!1A2B':
+        sheet.worksheet('用戶').update_cell(userRowNum, 8, 1)
+        line_bot_api.reply_message(event.reply_token, TextMessage(
+            text='歡迎進入1A2B遊戲模式，請試著讓我高潮吧❤(如想離開請跟我說[!離開])'
+        ))
+        return 0
+
+    if sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
+        if event.message.text == '!離開':
+            sheet.worksheet('用戶').update_cell(userRowNum, 8, 0)
+            line_bot_api.reply_message(event.reply_token, TextMessage(
+                text='離開遊戲'))
+            return 0
+        if not os.path.isfile("answer.json"):
+            with open("answer.json", "w") as out_file:
+                json.dump(dict(), out_file, indent=4)
+        with open("answer.json", "r") as in_file:
+            user_dict = json.load(in_file)
+        if isinstance(event.source, SourceGroup):
+            user_ID = event.source.group_id
+        else:
+            user_ID = event.source.user_id
+        # print(user_dict)
+        message = []
+        if user_ID not in user_dict:
+            user_dict[user_ID] = random.sample('1234567890', 4)
+            user_dict[user_ID].append(0)
+            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16] + "(lag超過5秒就是訊息被吃掉了"))
+
+        y = event.message.text
+    
+        if (y.isdigit() == False):
+            message.append (TextSendMessage(text= "請輸入數字"))
+            line_bot_api.reply_message(event.reply_token, message)
+            return 0
+        if (len(y) != 4):
+            message.append (TextSendMessage(text= "字數錯誤"))
+            line_bot_api.reply_message(event.reply_token, message)
+            return 0
+        if (len(y) != len(set(y))):
+            message.append (TextSendMessage(text= "數字禁止重複"))
+            line_bot_api.reply_message(event.reply_token, message)
+            return 0
+        a = 0
+        b = 0
+        for i in range (len(y)):
+            if(y[i] in user_dict[user_ID][:4]):
+                if(y[i] == user_dict[user_ID][i]):
+                    a += 1
+                else:
+                    b += 1
+        user_dict[user_ID][4] += 1
+        # print(user_dict[user_ID][:4])
+        # print("\n")
+        # print(user_dict[user_ID][4])
+
+        if (a == 4):
+            message += [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
+                       TextSendMessage(text= "你讓我高潮了❤️"),
+                       TextSendMessage(text= "總共猜了%d次" % user_dict[user_ID][4])]
+            sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
+            sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][5])
+            del user_dict[user_ID]
+            sheet.worksheet('用戶').update_cell(userRowNum, 8, 0)
+            line_bot_api.reply_message(event.reply_token, message)
+        else:
+            message += [TextSendMessage(text= "%d A %d B" % (a, b)), 
+                       TextSendMessage(text= "再用力一點❤️(%d" % (user_dict[user_ID][4]))]
+                    #    TextSendMessage(text= "猜了%d次" % (user_dict[user_ID][4]))]
+            line_bot_api.reply_message(event.reply_token, message)
+        print(user_dict)
+        with open("answer.json", "w") as output:
+            json.dump(user_dict, output, indent=4)
+        return 0
+
+    if ('!猜' in event.message.text or '!a' in event.message.text) and ' ' in event.message.text:
         if not os.path.isfile("answer.json"):
             with open("answer.json", "w") as out_file:
                 json.dump(dict(), out_file, indent=4)
@@ -1321,6 +1442,8 @@ def handle_message(event):
             message += [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
                        TextSendMessage(text= "你讓我高潮了❤️"),
                        TextSendMessage(text= "總共猜了%d次" % user_dict[user_ID][4])]
+            sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
+            sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][5])
             del user_dict[user_ID]
             line_bot_api.reply_message(event.reply_token, message)
         else:
@@ -1332,6 +1455,18 @@ def handle_message(event):
         with open("answer.json", "w") as output:
             json.dump(user_dict, output, indent=4)
         return 0
+    
+    if event.message.text == '!a最高分':
+        try:
+            if sheet.worksheet('用戶').row_values(memberRowNum)[3]:
+                line_bot_api.reply_message(event.reply_token, TextMessage(
+                    text=sheet.worksheet('用戶').row_values(memberRowNum)[1]+'的最高分為'+sheet.worksheet('用戶').row_values(memberRowNum)[3]
+                ))
+        except Exception as e:
+            # print('無記錄  #  ', e)
+            line_bot_api.reply_message(event.reply_token, TextMessage(
+                text=sheet.worksheet('用戶').row_values(memberRowNum)[1]+'無記錄'
+            ))
 
     if '報名' in event.message.text and ' ' in event.message.text:
         # testList=[dbid, dbname, dbmes, dbtim, dbts]
@@ -1359,7 +1494,9 @@ def handle_message(event):
             return 0
         textContent.append(sheet.worksheet('用戶').row_values(userRowNum)[1])
         sh.append_row(textContent)
-        line_bot_api.reply_message(event.reply_token,TextMessage(text="添加成功"))
+        line_bot_api.reply_message(event.reply_token,TextMessage(
+            text=sheet.worksheet('用戶').row_values(userRowNum)[1]+' '+mesText.split(' ')[1]+' '+mesText.split(' ')[2]+' '+"添加成功"
+        ))
         return 0
 
     if event.message.text == '簽到表':
@@ -1488,7 +1625,7 @@ def handle_message(event):
            ifNum = 0 # do 100%
         if ifNum == 0:
             if textNum == 0:
-                cur = conn.cursor()
+                # cur = conn.cursor()
                 cur.execute(
                     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
                     ("me", dbname, mesText, dbtim, dbts )
