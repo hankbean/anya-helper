@@ -426,7 +426,13 @@ def handle_message(event):
 
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
     
-    
+    try: # 讀取主題存檔
+        os.path.isfile("messageTheme.json")
+    except Exception as e:
+        print('not Theme file  #  ',e)
+    with open("messageTheme.json", "r", encoding="utf-8") as in_file:
+        messageTheme = json.load(in_file)
+
     if lagTime >= lagLine :
         print("quit Webhook redelivery") 
         return 0 #line會收到http200終止訊號，防止Webhook redelivery無限
@@ -533,7 +539,7 @@ def handle_message(event):
         textContent.append(profile.display_name)
         textContent.append(0)
         sheet.worksheet('用戶').append_row(textContent)
-        line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  新用戶註冊成功'))
+        line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  登錄小助理系統'))
         return 0
 
     if haveNum == 0 and isinstance(event.source, SourceGroup):
@@ -551,15 +557,20 @@ def handle_message(event):
         # textContent.append('group')
         textContent.append(1)
         sheet.worksheet('用戶').append_row(textContent)
-        line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+group_name+'的大家  新群組註冊成功'))
+        line_bot_api.reply_message(event.reply_token,TextMessage(text=group_name+'的大家 已登錄小助理系統'))
         return 0
 
+    themeNow = sheet.worksheet('用戶').cell(userRowNum, 9).value
+    if themeNow == None or themeNow == 0:
+        themeNow = 'normal'
+    
     if '!猜' in event.message.text or '!a' in event.message.text or sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
         lagLine = 5 #1A2Blag超過5秒就直接終止
         print("lagTime >= lagLine= " + str(lagTime >= lagLine))
         if lagTime >= lagLine :
             try:
-                mesText = "我家網路不好，請再說一遍好不好嘛❤️(lag超過5秒就是訊息被吃掉了"
+                mesText = messageTheme[themeNow]['1A2B'][0]
+                # mesText = "我家網路不好，請再說一遍好不好嘛❤️(lag超過5秒就是訊息被吃掉了"
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text=mesText))
@@ -567,6 +578,11 @@ def handle_message(event):
                 print('token過期，無法回覆訊息  #  ', e)
             print("FOR 1A2B, quit Webhook redelivery") 
             return 0
+
+    # 進入18禁文本模式
+    if event.message.text == "!18X":
+        return 0
+    # 讀取檔案 文本對話方式
 
     if event.message.text == "eyny":
         content = eyny_movie()
@@ -1316,9 +1332,12 @@ def handle_message(event):
 
     if event.message.text == '!1A2B':
         sheet.worksheet('用戶').update_cell(userRowNum, 8, 1)
-        line_bot_api.reply_message(event.reply_token, TextMessage(
-            text='歡迎進入1A2B遊戲模式，請試著讓我高潮吧❤(如想離開請跟我說[!離開])'
-        ))
+        line_bot_api.reply_message(event.reply_token, [TextMessage(
+            # text='歡迎進入1A2B遊戲模式，請試著讓我高潮吧❤(如想離開請跟我說[!離開])'
+            text=messageTheme[themeNow]['1A2B2']),
+            TextMessage(text='(如想離開請跟我說"!離開")'),
+            TextMessage(text="(lag超過5秒就是訊息被吃掉了)")
+        ])
         return 0
 
     if sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
@@ -1371,17 +1390,22 @@ def handle_message(event):
         # print(user_dict[user_ID][4])
 
         if (a == 4):
-            message += [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
-                       TextSendMessage(text= "你讓我高潮了❤️"),
+            message += [TextSendMessage(text= "%dA%dB" % (a, b)), 
+                       TextSendMessage(text=messageTheme[themeNow]['1A2B3'][0]),
+                       TextSendMessage(text=messageTheme[themeNow]['1A2B3'][1]),
                        TextSendMessage(text= "總共猜了%d次" % user_dict[user_ID][4])]
-            sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
-            sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][5])
+            highScore = sheet.worksheet('用戶').cell(userRowNum, 4).value
+            if highScore == None:
+                sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
+            else:
+                if user_dict[user_ID][4] < int(sheet.worksheet('用戶').cell(userRowNum, 4).value):
+                    sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
             del user_dict[user_ID]
             sheet.worksheet('用戶').update_cell(userRowNum, 8, 0)
             line_bot_api.reply_message(event.reply_token, message)
         else:
-            message += [TextSendMessage(text= "%d A %d B" % (a, b)), 
-                       TextSendMessage(text= "再用力一點❤️(%d" % (user_dict[user_ID][4]))]
+            message += [TextSendMessage(text= "%d A %d B (%d次)" % (a, b, user_dict[user_ID][4])), 
+                       TextSendMessage(text= messageTheme[themeNow]['1A2B4'])]
                     #    TextSendMessage(text= "猜了%d次" % (user_dict[user_ID][4]))]
             line_bot_api.reply_message(event.reply_token, message)
         print(user_dict)
