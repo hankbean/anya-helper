@@ -569,20 +569,23 @@ def handle_message(event):
         print("lagTime >= lagLine= " + str(lagTime >= lagLine))
         if lagTime >= lagLine :
             try:
-                mesText = messageTheme[themeNow]['1A2B'][0]
+                mesText = messageTheme[themeNow]['1A2B1']
                 # mesText = "我家網路不好，請再說一遍好不好嘛❤️(lag超過5秒就是訊息被吃掉了"
                 line_bot_api.reply_message(
                     event.reply_token,
                     TextSendMessage(text=mesText))
-            except Exception as e:
-                print('token過期，無法回覆訊息  #  ', e)
-            print("FOR 1A2B, quit Webhook redelivery") 
-            return 0
+            except Exception: #as e:
+                print('token過期，無法回覆訊息')
+                # print('token過期，無法回覆訊息  #  ', e)
+            finally:
+                print("FOR 1A2B, quit Webhook redelivery") 
+                return 0
 
     # 進入18禁文本模式
     if event.message.text == "!18X":
         return 0
     # 讀取檔案 文本對話方式
+
 
     if event.message.text == "eyny":
         content = eyny_movie()
@@ -1341,6 +1344,16 @@ def handle_message(event):
         return 0
 
     if sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
+        if event.message.text == "!single mode":
+            sheet.worksheet('用戶').update_cell(userRowNum, 10, 1)
+            line_bot_api.reply_message(event.reply_token, TextMessage(
+                text='單人模式'))
+            return 0
+        if event.message.text == "!together":
+            sheet.worksheet('用戶').update_cell(userRowNum, 10, 0)
+            line_bot_api.reply_message(event.reply_token, TextMessage(
+                text='合作模式'))
+            return 0
         if event.message.text == '!離開':
             sheet.worksheet('用戶').update_cell(userRowNum, 8, 0)
             line_bot_api.reply_message(event.reply_token, TextMessage(
@@ -1351,7 +1364,7 @@ def handle_message(event):
                 json.dump(dict(), out_file, indent=4)
         with open("answer.json", "r") as in_file:
             user_dict = json.load(in_file)
-        if isinstance(event.source, SourceGroup):
+        if isinstance(event.source, SourceGroup) and not sheet.worksheet('用戶').cell(userRowNum, 10).value:
             user_ID = event.source.group_id
         else:
             user_ID = event.source.user_id
