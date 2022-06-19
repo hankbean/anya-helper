@@ -500,7 +500,9 @@ def handle_message(event):
     # 搜尋用戶 如果無此用戶 則註冊
     userRowNum = 0
     memberRowNum = 0
-    haveNum = 0
+    haveUser = 0
+    haveMember = 0
+    haveGroup = 0
     
     if isinstance(event.source, SourceUser):
         i = 0
@@ -508,7 +510,7 @@ def handle_message(event):
             # print(rows)
             try: # 尋找用戶存檔，找到暫存入緩存中
                 if rows[0] == str(event.source.user_id):
-                    haveNum = 1
+                    haveUser = 1
                     memberRowNum = i+1
                     userRowNum = i+1
                     break
@@ -521,9 +523,10 @@ def handle_message(event):
         for rows in sheet.worksheet('用戶').get_all_values():
             try: # 尋找用戶存檔，找到暫存入緩存中
                 if rows[0] == str(event.source.user_id):
+                    haveMember = 1
                     memberRowNum = i+1
                 if rows[0] == str(event.source.group_id):
-                    haveNum = 1
+                    haveGroup = 1
                     userRowNum = i+1
                 i += 1
             except Exception as e:
@@ -533,7 +536,7 @@ def handle_message(event):
     # print('userRowNum'+str(userRowNum))
     # print('memberRowNum'+str(memberRowNum))
     # 進行註冊
-    if haveNum == 0 and isinstance(event.source, SourceUser):
+    if haveUser == 0 and isinstance(event.source, SourceUser):
         textContent = []
         textContent.append(event.source.user_id)
         textContent.append(profile.display_name)
@@ -542,7 +545,7 @@ def handle_message(event):
         line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  登錄小助理系統'))
         return 0
 
-    if haveNum == 0 and isinstance(event.source, SourceGroup):
+    if haveGroup == 0 and isinstance(event.source, SourceGroup):
         textContent = []
         textContent.append(event.source.group_id)
         access_token = config['line_bot']['Channel_Access_Token']
@@ -560,12 +563,31 @@ def handle_message(event):
         line_bot_api.reply_message(event.reply_token,TextMessage(text=group_name+'的大家 已登錄小助理系統'))
         return 0
 
+    if haveMember == 0 and isinstance(event.source, SourceGroup):
+        textContent = []
+        textContent.append(event.source.user_id)
+        access_token = config['line_bot']['Channel_Access_Token']
+        # get member_name from line伺服器
+        headers = {"content-type": "application/json; charset=UTF-8",'Authorization':'Bearer {}'.format(access_token)}
+        url = 'https://api.line.me/v2/bot/group/' + event.source.group_id + '/member/' + event.source.user_id
+        response = requests.get(url, headers=headers)
+        response = response.json()
+        member_name = response['displayName']
+
+        textContent.append(member_name)
+        textContent.append(0)
+        sheet.worksheet('用戶').append_row(textContent)
+        line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+member_name+'  登錄小助理系統'))
+        return 0
+
+    del haveUser, haveGroup, haveMember
+
     themeNow = sheet.worksheet('用戶').cell(userRowNum, 9).value
     if themeNow == None or themeNow == 0:
         themeNow = 'normal'
     
     if '!猜' in event.message.text or '!a' in event.message.text or sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
-        lagLine = 5 #1A2Blag超過5秒就直接終止
+        lagLine = 10 #1A2Blag超過10秒就直接終止
         print("lagTime >= lagLine= " + str(lagTime >= lagLine))
         if lagTime >= lagLine :
             try:
@@ -583,8 +605,16 @@ def handle_message(event):
 
     # 進入18禁文本模式
     if event.message.text == "!18X":
+        sheet.worksheet('用戶').update_cell(userRowNum, 9, "18X")
+        line_bot_api.reply_message(event.reply_token, TextMessage(
+            text='老司機模式'))
         return 0
     # 讀取檔案 文本對話方式
+    if event.message.text == "!normal mode":
+        sheet.worksheet('用戶').update_cell(userRowNum, 9, "0")
+        line_bot_api.reply_message(event.reply_token, TextMessage(
+            text='正常模式'))
+        return 0
 
 
     if event.message.text == "eyny":
@@ -1098,7 +1128,7 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(
                 text="指令清單: \n\n-- #占卜\n"+\
-                "-- anya or 阿妮亞 or 安妮亞\n-- !猜 + [4位數字] or !a + [4位數字] (1A2B猜數字遊戲)\n-- 加歌 + [歌名]\n-- 歌單\n-- 吃什麼\n-- 不負責任猜題\n-- 點歌 or 唱歌 or ktv\n-- #笑話\n-- 妹\n-- 抽正妹\n-- 中二\n-- #發牌 (開發中\n-- #呼叫工程師+[反饋內容] (開發中\n\n-- 作者\n-- 版本"
+                "-- anya or 阿妮亞 or 安妮亞\n-- !猜 + [4位數字] or !a + [4位數字] (1A2B猜數字遊戲)\n-- 加歌 + [歌名]\n-- 歌單\n-- 吃什麼\n-- 不負責任猜題\n-- 點歌 or 唱歌 or ktv\n-- #笑話\n-- 妹\n-- 抽正妹\n-- 中二\n-- #發牌 (開發中\n-- 呼叫工程師+[反饋內容] (開發中\n\n-- 作者\n-- 版本"
             )
             # 召喚
             #【人名、綽號】(例如[豆豆])
@@ -1142,6 +1172,17 @@ def handle_message(event):
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="本機器人由 『豆神教文大總部部長兼教主』 豆豆製作"))
+        return 0
+
+    if event.message.text == "#留言":
+        # 用id搜尋資料庫有無留言記錄 並印出
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=verAnswer))
+        return 0
+
+    if event.message.text == "#傳話":
+        #玫瑰傳情 匿名傳話
         return 0
 
     if event.message.text == "#回答":
@@ -1296,8 +1337,13 @@ def handle_message(event):
                 event.reply_token, image_message)
         return 0
 
-    if "#呼叫工程師" in event.message.text:
-        y = event.message.text.mesText.split(' ')[1]
+    if "呼叫工程師" in event.message.text:
+        textContent = event.message.text.split(' ')[1:]
+        textContent.append(dbid)
+        textContent.append(dbtim)
+        sheet.worksheet('to工程師').insert_row(textContent, 1)
+        line_bot_api.reply_message(event.reply_token,
+            TextSendMessage(text='工程師已收到囉🧐 謝謝你的回報~'))
         #google 表單
         return 0
 
@@ -1373,7 +1419,7 @@ def handle_message(event):
         if user_ID not in user_dict:
             user_dict[user_ID] = random.sample('1234567890', 4)
             user_dict[user_ID].append(0)
-            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16] + "(lag超過5秒就是訊息被吃掉了"))
+            message.append (TextSendMessage(text= "1A2B新題目開始-\n" + dbtim[0:16] + "\n(lag超過5秒就是訊息被吃掉了"))
 
         y = event.message.text
     
@@ -1441,7 +1487,7 @@ def handle_message(event):
         if user_ID not in user_dict:
             user_dict[user_ID] = random.sample('1234567890', 4)
             user_dict[user_ID].append(0)
-            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16] + "(lag超過5秒就是訊息被吃掉了"))
+            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16] + "(lag超過10秒就是訊息被吃掉了"))
 
         mesText = event.message.text
         if not ' ' in mesText:
