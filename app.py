@@ -416,13 +416,21 @@ def handle_message(event):
     lagTime = dtTw.timestamp() / 1 - event.timestamp / 1000
     # 如果message重複則不記錄
     # cur = conn.cursor()
-    cur.execute("""SELECT * FROM message WHERE datetime = %s ;""",(dbtim,))
-    rows = cur.fetchall()
-    for row in rows:
-        if dbmes == str(row[3]):
-            print("same message, quit Webhook redelivery") 
-            return 0
-    conn.commit()
+
+    # bad sql
+    # cur.execute("""SELECT * FROM message WHERE datetime = %s ;""",(dbtim,))
+    # rows = cur.fetchall()
+    # for row in rows:
+    #     if dbmes == str(row[3]):
+    #         print("same message, quit Webhook redelivery") 
+    #         return 0
+    # conn.commit()
+
+    cur.execute("""SELECT * FROM message WHERE datetime = %s AND mes = %s;""",(dbtim,dbmes))
+    row = cur.fetchone()
+    if row:
+        print("same message, quit Webhook redelivery") 
+        return 0
 
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
     
@@ -488,6 +496,7 @@ def handle_message(event):
     print("event.source.user_id:", event.source.user_id)
     # conn.close()
 
+    """ 
     #連接sheet
     auth_json_path = 'credentials.json'
     gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
@@ -503,8 +512,17 @@ def handle_message(event):
     haveUser = 0
     haveMember = 0
     haveGroup = 0
+    """
+
+    # 搜尋用戶 如果無此用戶 則註冊
+    dbUserRowNum = 0
+    dbMemberRowNum = 0
+    # dbHaveUser = 0
+    # dbHaveMember = 0
+    # dbHaveGroup = 0
     
     if isinstance(event.source, SourceUser):
+        """ 
         i = 0
         for rows in sheet.worksheet('用戶').get_all_values():
             # print(rows)
@@ -518,7 +536,40 @@ def handle_message(event):
             except Exception as e:
                 print('搜尋用戶為空？', e)
                 break
+         """
+        cur.execute("""SELECT * FROM userdata WHERE id = %s ;""",(event.source.user_id,))
+        # rows = cur.fetchall()
+        row = cur.fetchone()
+        # print(rows)
+        # if rows: 
+        #     print(rows)
+        # for row in rows:
+            
+        #     print("rows")
+            
+        #     print(row)
+        if row:
+                # dbHaveUser = 1
+            dbMemberRowNum = row
+            dbUserRowNum = row
+
+        if not row:
+            cur.execute(
+                """INSERT INTO userdata (id,name,uorg) VALUES (%s, %s, %s);""",
+                (event.source.user_id, profile.display_name, 0)
+            )
+            conn.commit()
+            line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  登錄小助理新系統'))
+            return 0
+
+            # if dbmes == str(row[3]):
+            #     print("same message, quit Webhook redelivery") 
+            #     return 0
+        
+
+
     elif isinstance(event.source, SourceGroup):
+        """ 
         i = 0
         for rows in sheet.worksheet('用戶').get_all_values():
             try: # 尋找用戶存檔，找到暫存入緩存中
@@ -532,9 +583,73 @@ def handle_message(event):
             except Exception as e:
                 print('搜尋群組為空？', e)
                 break
-    
+         """
+        # bad sql
+        # cur.execute("""SELECT * FROM userdata WHERE id = %s ;""",(event.source.user_id,))
+        # rows = cur.fetchall()
+        # for row in rows:
+        #     if row:
+        #         dbHaveMember = 1
+        #         dbMemberRowNum = row
+        #         break
+        # cur.execute("""SELECT * FROM userdata WHERE id = %s ;""",(event.source.group_id,))
+        # rows = cur.fetchall()
+        # for row in rows:
+        #     if row:
+        #         dbHaveGroup = 1
+        #         dbUserRowNum = row
+        #         break
+
+        cur.execute("""SELECT * FROM userdata WHERE id = %s ;""",(event.source.user_id,))
+        row = cur.fetchone()
+        if row:
+            dbMemberRowNum = row
+        if not row:
+            access_token = config['line_bot']['Channel_Access_Token']
+            # get member_name from line伺服器
+            headers = {"content-type": "application/json; charset=UTF-8",'Authorization':'Bearer {}'.format(access_token)}
+            url = 'https://api.line.me/v2/bot/group/' + event.source.group_id + '/member/' + event.source.user_id
+            response = requests.get(url, headers=headers)
+            response = response.json()
+            member_name = response['displayName']
+
+            cur.execute(
+                """INSERT INTO userdata (id,name,uorg) VALUES (%s, %s, %s);""",
+                (event.source.user_id, member_name, 0)
+            )
+            conn.commit()
+            line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+member_name+'  登錄小助理新系統'))
+            return 0
+
+        cur.execute("""SELECT * FROM userdata WHERE id = %s ;""",(event.source.group_id,))
+        row = cur.fetchone()
+        if row:
+            dbUserRowNum = row
+        if not row:
+            access_token = config['line_bot']['Channel_Access_Token']
+            # get group_name from line伺服器
+            headers = {"content-type": "application/json; charset=UTF-8",'Authorization':'Bearer {}'.format(access_token)}
+            url = 'https://api.line.me/v2/bot/group/' + event.source.group_id + '/summary'
+            response = requests.get(url, headers=headers)
+            response = response.json()
+            group_name = response['groupName']
+
+            cur.execute(
+                """INSERT INTO userdata (id,name,uorg) VALUES (%s, %s, %s);""",
+                (event.source.group_id, group_name, 1)
+            )
+            conn.commit()
+            line_bot_api.reply_message(event.reply_token,TextMessage(text=group_name+'的大家 已登錄小助理新系統'))
+            return 0
+
+    # print("dbUserRowNum")
+    # print(dbUserRowNum)
+    # print("dbMemberRowNum")
+    # print(dbMemberRowNum)
+
     # print('userRowNum'+str(userRowNum))
     # print('memberRowNum'+str(memberRowNum))
+    """ 
     # 進行註冊
     if haveUser == 0 and isinstance(event.source, SourceUser):
         textContent = []
@@ -544,7 +659,21 @@ def handle_message(event):
         sheet.worksheet('用戶').append_row(textContent)
         line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  登錄小助理系統'))
         return 0
+    """
 
+
+    # 進行註冊
+    # if dbHaveUser == 0 and isinstance(event.source, SourceUser):
+    #     cur.execute(
+    #         """INSERT INTO userdata (id,name,uorg) VALUES (%s, %s, %s);""",
+    #         (event.source.user_id, profile.display_name, 0)
+    #     )
+    #     conn.commit()
+    #     line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  登錄小助理新系統'))
+    #     return 0
+
+        
+    """ 
     if haveGroup == 0 and isinstance(event.source, SourceGroup):
         textContent = []
         textContent.append(event.source.group_id)
@@ -562,7 +691,24 @@ def handle_message(event):
         sheet.worksheet('用戶').append_row(textContent)
         line_bot_api.reply_message(event.reply_token,TextMessage(text=group_name+'的大家 已登錄小助理系統'))
         return 0
+    """
+    # if dbHaveGroup == 0 and isinstance(event.source, SourceGroup):
+    #     access_token = config['line_bot']['Channel_Access_Token']
+    #     # get group_name from line伺服器
+    #     headers = {"content-type": "application/json; charset=UTF-8",'Authorization':'Bearer {}'.format(access_token)}
+    #     url = 'https://api.line.me/v2/bot/group/' + event.source.group_id + '/summary'
+    #     response = requests.get(url, headers=headers)
+    #     response = response.json()
+    #     group_name = response['groupName']
 
+    #     cur.execute(
+    #         """INSERT INTO userdata (id,name,uorg) VALUES (%s, %s, %s);""",
+    #         (event.source.group_id, group_name, 1)
+    #     )
+    #     conn.commit()
+    #     line_bot_api.reply_message(event.reply_token,TextMessage(text=group_name+'的大家 已登錄小助理新系統'))
+    #     return 0
+    """ 
     if haveMember == 0 and isinstance(event.source, SourceGroup):
         textContent = []
         textContent.append(event.source.user_id)
@@ -579,14 +725,41 @@ def handle_message(event):
         sheet.worksheet('用戶').append_row(textContent)
         line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+member_name+'  登錄小助理系統'))
         return 0
+ """
+    # if dbHaveMember == 0 and isinstance(event.source, SourceGroup):
+    #     access_token = config['line_bot']['Channel_Access_Token']
+    #     # get member_name from line伺服器
+    #     headers = {"content-type": "application/json; charset=UTF-8",'Authorization':'Bearer {}'.format(access_token)}
+    #     url = 'https://api.line.me/v2/bot/group/' + event.source.group_id + '/member/' + event.source.user_id
+    #     response = requests.get(url, headers=headers)
+    #     response = response.json()
+    #     member_name = response['displayName']
 
-    del haveUser, haveGroup, haveMember
+    #     cur.execute(
+    #         """INSERT INTO userdata (id,name,uorg) VALUES (%s, %s, %s);""",
+    #         (event.source.user_id, member_name, 0)
+    #     )
+    #     conn.commit()
+    #     line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+member_name+'  登錄小助理新系統'))
+    #     return 0
 
-    themeNow = sheet.worksheet('用戶').cell(userRowNum, 9).value
-    if themeNow == None or themeNow == 0:
+    # del haveUser, haveGroup, haveMember
+    # del dbHaveUser, dbHaveGroup, dbHaveMember
+
+    # themeNow = sheet.worksheet('用戶').cell(userRowNum, 9).value
+    # if themeNow == None or themeNow == 0:
+    #     themeNow = 'normal'
+    themeNow = 0
+    if not dbUserRowNum[9] or dbUserRowNum[9] == 0:
         themeNow = 'normal'
+    else:
+        themeNow = dbUserRowNum[9]
+    # if themeNow == None or themeNow == 0:
+    #     themeNow = 'normal'
+
+    # print(themeNow)
     
-    if '!猜' in event.message.text or '!a' in event.message.text or sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
+    if '!猜' in event.message.text or '!a' in event.message.text or dbUserRowNum[9] == '1':
         lagLine = 10 #1A2Blag超過10秒就直接終止
         print("lagTime >= lagLine= " + str(lagTime >= lagLine))
         if lagTime >= lagLine :
@@ -605,13 +778,23 @@ def handle_message(event):
 
     # 進入18禁文本模式
     if event.message.text == "!18X":
-        sheet.worksheet('用戶').update_cell(userRowNum, 9, "18X")
+        # sheet.worksheet('用戶').update_cell(userRowNum, 9, "18X")
+        cur.execute(
+            """UPDATE userdata SET theme=%s WHERE id=%s;""",
+            ("18X", dbUserRowNum[1])
+        )
+        conn.commit()
         line_bot_api.reply_message(event.reply_token, TextMessage(
             text='老司機模式'))
         return 0
     # 讀取檔案 文本對話方式
     if event.message.text == "!normal mode":
-        sheet.worksheet('用戶').update_cell(userRowNum, 9, "0")
+        # sheet.worksheet('用戶').update_cell(userRowNum, 9, "0")
+        cur.execute(
+            """UPDATE userdata SET theme=%s WHERE id=%s;""",
+            ("0", dbUserRowNum[1])
+        )
+        conn.commit()
         line_bot_api.reply_message(event.reply_token, TextMessage(
             text='正常模式'))
         return 0
@@ -1337,6 +1520,7 @@ def handle_message(event):
                 event.reply_token, image_message)
         return 0
 
+    """ 
     if "呼叫工程師" in event.message.text:
         textContent = event.message.text.split(' ')[1:]
         textContent.append(dbid)
@@ -1346,6 +1530,7 @@ def handle_message(event):
             TextSendMessage(text='工程師已收到囉🧐 謝謝你的回報~'))
         #google 表單
         return 0
+    """
 
     if event.message.text == "侑子的寶物占卜":
         #占卜問卷
@@ -1380,7 +1565,12 @@ def handle_message(event):
         return 0
 
     if event.message.text == '!1A2B':
-        sheet.worksheet('用戶').update_cell(userRowNum, 8, 1)
+        # sheet.worksheet('用戶').update_cell(userRowNum, 8, 1)
+        cur.execute(
+            """UPDATE userdata SET missonsave=%s WHERE id=%s;""",
+            ("1", dbUserRowNum[1])
+        )   
+        conn.commit()
         line_bot_api.reply_message(event.reply_token, [TextMessage(
             # text='歡迎進入1A2B遊戲模式，請試著讓我高潮吧❤(如想離開請跟我說[!離開])'
             text=messageTheme[themeNow]['1A2B2']),
@@ -1389,19 +1579,35 @@ def handle_message(event):
         ])
         return 0
 
-    if sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
+    # if sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
+    if dbUserRowNum[8] == '1':
         if event.message.text == "!single mode":
-            sheet.worksheet('用戶').update_cell(userRowNum, 10, 1)
+            # sheet.worksheet('用戶').update_cell(userRowNum, 10, 1)
+            cur.execute(
+                """UPDATE userdata SET singlemode=%s WHERE id=%s;""",
+                ("1", dbUserRowNum[1])
+            )
+            conn.commit()
             line_bot_api.reply_message(event.reply_token, TextMessage(
                 text='單人模式'))
             return 0
         if event.message.text == "!together":
-            sheet.worksheet('用戶').update_cell(userRowNum, 10, 0)
+            # sheet.worksheet('用戶').update_cell(userRowNum, 10, 0)
+            cur.execute(
+                """UPDATE userdata SET singlemode=%s WHERE id=%s;""",
+                ("0", dbUserRowNum[1])
+            )
+            conn.commit()
             line_bot_api.reply_message(event.reply_token, TextMessage(
                 text='合作模式'))
             return 0
         if event.message.text == '!離開':
-            sheet.worksheet('用戶').update_cell(userRowNum, 8, 0)
+            # sheet.worksheet('用戶').update_cell(userRowNum, 8, 0)
+            cur.execute(
+                """UPDATE userdata SET missonsave=%s WHERE id=%s;""",
+                ("0", dbUserRowNum[1])
+            )
+            conn.commit()
             line_bot_api.reply_message(event.reply_token, TextMessage(
                 text='離開遊戲'))
             return 0
@@ -1410,7 +1616,8 @@ def handle_message(event):
                 json.dump(dict(), out_file, indent=4)
         with open("answer.json", "r") as in_file:
             user_dict = json.load(in_file)
-        if isinstance(event.source, SourceGroup) and not sheet.worksheet('用戶').cell(userRowNum, 10).value:
+        # if isinstance(event.source, SourceGroup) and not sheet.worksheet('用戶').cell(userRowNum, 10).value:
+        if isinstance(event.source, SourceGroup) and not dbUserRowNum[10]:
             user_ID = event.source.group_id
         else:
             user_ID = event.source.user_id
@@ -1453,14 +1660,31 @@ def handle_message(event):
                        TextSendMessage(text=messageTheme[themeNow]['1A2B3'][0]),
                        TextSendMessage(text=messageTheme[themeNow]['1A2B3'][1]),
                        TextSendMessage(text= "總共猜了%d次" % user_dict[user_ID][4])]
-            highScore = sheet.worksheet('用戶').cell(userRowNum, 4).value
+            # highScore = sheet.worksheet('用戶').cell(userRowNum, 4).value
+            highScore = dbUserRowNum[4]
             if highScore == None:
-                sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
+                # sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
+                cur.execute(
+                    """UPDATE userdata SET game1a2bhigh=%s WHERE id=%s;""",
+                    (user_dict[user_ID][4], dbUserRowNum[1])
+                )
+                conn.commit()
             else:
-                if user_dict[user_ID][4] < int(sheet.worksheet('用戶').cell(userRowNum, 4).value):
-                    sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
+                # if user_dict[user_ID][4] < int(sheet.worksheet('用戶').cell(userRowNum, 4).value):
+                #     sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
+                if user_dict[user_ID][4] < int(dbUserRowNum[4]):
+                    cur.execute(
+                        """UPDATE userdata SET game1a2bhigh=%s WHERE id=%s;""",
+                        (user_dict[user_ID][4], dbUserRowNum[1])
+                    )   
+                    conn.commit()
             del user_dict[user_ID]
-            sheet.worksheet('用戶').update_cell(userRowNum, 8, 0)
+            # sheet.worksheet('用戶').update_cell(userRowNum, 8, 0)
+            cur.execute(
+                """UPDATE userdata SET missonsave=%s WHERE id=%s;""",
+                ("0", dbUserRowNum[1])
+            )
+            conn.commit()
             line_bot_api.reply_message(event.reply_token, message)
         else:
             message += [TextSendMessage(text= "%d A %d B (%d次)" % (a, b, user_dict[user_ID][4])), 
@@ -1525,8 +1749,8 @@ def handle_message(event):
             message += [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
                        TextSendMessage(text= "你讓我高潮了❤️"),
                        TextSendMessage(text= "總共猜了%d次" % user_dict[user_ID][4])]
-            sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
-            sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][5])
+            # sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
+            # sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][5])
             del user_dict[user_ID]
             line_bot_api.reply_message(event.reply_token, message)
         else:
