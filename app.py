@@ -759,8 +759,8 @@ def handle_message(event):
 
     # print(themeNow)
     
-    if '!猜' in event.message.text or '!a' in event.message.text or dbUserRowNum[9] == '1':
-        lagLine = 10 #1A2Blag超過10秒就直接終止
+    if '!猜' in event.message.text or '!a' in event.message.text or dbUserRowNum[8] == '1':
+        lagLine = 5 #1A2Blag超過5秒就直接終止
         print("lagTime >= lagLine= " + str(lagTime >= lagLine))
         if lagTime >= lagLine :
             try:
@@ -1711,7 +1711,7 @@ def handle_message(event):
         if user_ID not in user_dict:
             user_dict[user_ID] = random.sample('1234567890', 4)
             user_dict[user_ID].append(0)
-            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16] + "(lag超過10秒就是訊息被吃掉了"))
+            message.append (TextSendMessage(text= "1A2B新題目開始-" + dbtim[0:16] + "(lag超過5秒就是訊息被吃掉了"))
 
         mesText = event.message.text
         if not ' ' in mesText:
