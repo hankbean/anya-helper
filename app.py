@@ -79,6 +79,9 @@ API_Get_Image = config['other_api']['API_Get_Image']
 # );
 # conn.commit()
 
+@app.route("/")
+def hello():
+    return "ok!"
 
 @app.route("/callback", methods=['POST'])
 def callback():
