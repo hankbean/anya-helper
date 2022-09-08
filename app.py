@@ -1395,7 +1395,7 @@ def handle_message(event):
         ) 
         return 0
 
-    if event.message.text == "吃什麼" or event.message.text == "吃啥":
+    if event.message.text == "文大吃什麼" or event.message.text == "吃啥":
         answers = [
             "全家",
             "愛瘋牛排",
@@ -1420,6 +1420,32 @@ def handle_message(event):
             "大Q",
             "大紅袍",
             "胖河馬"
+        ]
+        mesText = answers[random.randint(0, len(answers)-1)]
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=mesText))
+        return 0
+
+    if "吃什麼" in event.message.text:
+        answers = [
+            "漢堡",
+            "義大利麵",
+            "滷肉飯",
+            "鴨肉飯",
+            "自助餐",
+            "全家",
+            "麥當勞",
+            "7-11",
+            "KFC",
+            "牛排",
+            "炒飯",
+            "豆漿店",
+            "居酒屋",
+            "要減肥了",
+            "夜市",
+            "拉麵",
+            "披薩"
         ]
         mesText = answers[random.randint(0, len(answers)-1)]
         line_bot_api.reply_message(
