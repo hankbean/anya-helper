@@ -833,7 +833,7 @@ def handle_message(event):
         line_bot_api.reply_message(
             event.reply_token, image_message)
         return 0
-    if event.message.text == "牌" or event.message.text == "抽":
+    if event.message.text == "抽":
         client = ImgurClient(client_id, client_secret)
         images = client.get_album_images("jAqXRhh")#client.get_album_images("l8aRa")
         index = random.randint(0, len(images) - 1)
@@ -849,6 +849,18 @@ def handle_message(event):
         ))
         message.append (TextSendMessage(text= turn[random.randint(0, len(turn)-1)]))
         line_bot_api.reply_message(event.reply_token, message)
+        return 0
+    if event.message.text == "抽正牌":
+        client = ImgurClient(client_id, client_secret)
+        images = client.get_album_images("jAqXRhh")#client.get_album_images("l8aRa")
+        index = random.randint(0, len(images) - 1)
+        url = images[index].link
+        image_message = ImageSendMessage(
+            original_content_url=url,
+            preview_image_url=url
+        )
+        line_bot_api.reply_message(
+            event.reply_token, image_message)
         return 0
     if event.message.text == "抽牌圖test":
         client = ImgurClient(client_id, client_secret)
