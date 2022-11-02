@@ -1303,8 +1303,8 @@ def handle_message(event):
             ascNum = random.randint(0, 11)
             MoonNum = random.randint(0, 11)
             SunNum = random.randint(0, 11)
-            qNum = random.randint(0, 11)
-            wNum = random.randint(0, 11)
+            qNum = random.randint(0, 2)
+            wNum = random.randint(0, 4)
             eNum = random.randint(0, 11)
             rNum = random.randint(0, 11)
             tNum = random.randint(0, 11)
@@ -1327,14 +1327,13 @@ def handle_message(event):
             ] 
 
             if i == 0:
-                mesText = str(divination_content) + "\n\n感受盤:\nASC:   " + asc[ascNum] + "\n月亮: " + str(MoonNum+1) + "宮    太陽: " + str(SunNum+1) +\
-                    "宮\n水星: " + str(qNum+1) + "宮    金星: " + str(wNum+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
-                    str(rNum+1) + "宮\n土星: " + str(tNum+1) + "宮    天王星: " + str(yNum+1) + "宮\n海王星: " +\
-                    str(uNum+1) + "宮    冥王星: " + str(iNum+1) + "宮\n\n"
+                mesText = str(divination_content) + "\n\n感受盤:\n"
 
             if i == 1:
-                mesText += "事實盤:\nASC:   " + asc[ascNum] + "\n月亮: " + str(MoonNum+1) + "宮    太陽: " + str(SunNum+1) +\
-                    "宮\n水星: " + str(qNum+1) + "宮    金星: " + str(wNum+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
+                mesText += "\n\n事實盤:\n"
+
+            mesText +="ASC:   " + asc[ascNum] + "\n月亮: " + str(MoonNum+1) + "宮    太陽: " + str(SunNum+1) +\
+                    "宮\n水星: " + str((SunNum+qNum-1)%12+1) + "宮    金星: " + str((SunNum+wNum-2)%12+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
                     str(rNum+1) + "宮\n土星: " + str(tNum+1) + "宮    天王星: " + str(yNum+1) + "宮\n海王星: " +\
                     str(uNum+1) + "宮    冥王星: " + str(iNum+1) + "宮"
                     
