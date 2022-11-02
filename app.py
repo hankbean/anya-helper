@@ -1296,6 +1296,52 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text=mesText))
         return 0
+    
+    if "雙盤占卜" in event.message.text:
+        divination_content = event.message.text.split(' ')[1:]
+        for i in range(2):
+            ascNum = random.randint(0, 11)
+            MoonNum = random.randint(0, 11)
+            SunNum = random.randint(0, 11)
+            qNum = random.randint(0, 11)
+            wNum = random.randint(0, 11)
+            eNum = random.randint(0, 11)
+            rNum = random.randint(0, 11)
+            tNum = random.randint(0, 11)
+            yNum = random.randint(0, 11)
+            uNum = random.randint(0, 11)
+            iNum = random.randint(0, 11)
+            asc = [
+                "白羊",
+                "金牛",
+                "雙子",
+                "巨蟹",
+                "獅子",
+                "處女",
+                "天秤",
+                "天蝎",
+                "射手",
+                "摩羯",
+                "水瓶",
+                "雙魚"
+            ] 
+
+            if i == 0:
+                mesText = str(divination_content) + "\n\n感受盤:\nASC:   " + asc[ascNum] + "\n月亮: " + str(MoonNum+1) + "宮    太陽: " + str(SunNum+1) +\
+                    "宮\n水星: " + str(qNum+1) + "宮    金星: " + str(wNum+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
+                    str(rNum+1) + "宮\n土星: " + str(tNum+1) + "宮    天王星: " + str(yNum+1) + "宮\n海王星: " +\
+                    str(uNum+1) + "宮    冥王星: " + str(iNum+1) + "宮\n\n"
+
+            if i == 1:
+                mesText += "事實盤:\nASC:   " + asc[ascNum] + "\n月亮: " + str(MoonNum+1) + "宮    太陽: " + str(SunNum+1) +\
+                    "宮\n水星: " + str(qNum+1) + "宮    金星: " + str(wNum+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
+                    str(rNum+1) + "宮\n土星: " + str(tNum+1) + "宮    天王星: " + str(yNum+1) + "宮\n海王星: " +\
+                    str(uNum+1) + "宮    冥王星: " + str(iNum+1) + "宮"
+                    
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=mesText))
+        return 0
 
     if event.message.text == "不負責任猜題":
         answers = [
