@@ -1299,18 +1299,58 @@ def handle_message(event):
     
     if "雙盤占卜" in event.message.text:
         divination_content = event.message.text.split(' ')[1:]
+        mesText = ""
+        mesText_easy = ""
         for i in range(2):
-            ascNum = random.randint(0, 11)
+            house = [[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]],[[],[]]] 
+            ascNum = random.randint(0, 11) 
+
             MoonNum = random.randint(0, 11)
+            house[MoonNum][0].append("月亮")
+            house[(MoonNum+6)%12][1].append("映月亮")
+
             SunNum = random.randint(0, 11)
+            house[SunNum][0].append("太陽")
+            house[(SunNum+6)%12][1].append("映太陽")
+
             qNum = random.randint(0, 2)
+            house[(SunNum+qNum-1)%12][0].append("水星")
+            house[(SunNum+qNum-1+6)%12][1].append("映水星")
+
             wNum = random.randint(0, 4)
+            house[(SunNum+wNum-2)%12][0].append("金星")
+            house[(SunNum+wNum-2+6)%12][1].append("映金星")
+
             eNum = random.randint(0, 11)
+            house[eNum][0].append("火星") #映星4,7,8
+            house[(eNum+3)%12][1].append("映火星")
+            house[(eNum+6)%12][1].append("映火星")
+            house[(eNum+7)%12][1].append("映火星")
+
             rNum = random.randint(0, 11)
+            house[rNum][0].append("木星") #映星5,7,9
+            house[(rNum+4)%12][1].append("映木星")
+            house[(rNum+6)%12][1].append("映木星")
+            house[(rNum+8)%12][1].append("映木星")
+            
             tNum = random.randint(0, 11)
+            house[tNum][0].append("土星") #映星3,7,10
+            house[(tNum+2)%12][1].append("映土星")
+            house[(tNum+6)%12][1].append("映土星")
+            house[(tNum+9)%12][1].append("映土星")
+            
             yNum = random.randint(0, 11)
+            house[yNum][0].append("天王星")
+            house[(yNum+6)%12][1].append("映天王星")
+            
             uNum = random.randint(0, 11)
+            house[uNum][0].append("海王星")
+            house[(uNum+6)%12][1].append("映海王星")
+
             iNum = random.randint(0, 11)
+            house[iNum][0].append("冥王星")
+            house[(iNum+6)%12][1].append("映冥王星")
+            
             asc = [
                 "白羊",
                 "金牛",
@@ -1325,21 +1365,64 @@ def handle_message(event):
                 "水瓶",
                 "雙魚"
             ] 
-
+            
             if i == 0:
-                mesText = str(divination_content) + "\n\n感受盤:\n"
+                mesText_easy += str(divination_content) + "\n\n感受盤:\n"
+                for i in range(0, 12):
+                    mesText_easy += str(i+1) + "宮: "
+                    for star in house[i][0]:
+                        mesText_easy += star + "，"
+                    for star in house[i][1]:
+                        mesText_easy += star + "，"
+                    mesText_easy += "\n"
+
+                mesText += str(divination_content) + "\n\n感受盤:\n----------\n"
+                for i in range(0, 12):
+                    mesText += str(i+1) + "宮: "
+                    for star in house[i][0]:
+                        if star == house[i][0][0]:
+                           mesText += "\n[實] "
+                        mesText += star + "，"
+                    for star in house[i][1]:
+                        if star == house[i][1][0]:
+                           mesText += "\n[映] "
+                        mesText += star + "，"
+                    mesText += "\n----------\n"
 
             if i == 1:
-                mesText += "\n\n事實盤:\n"
+                mesText_easy += "\n\n事實盤:\n"
+                for i in range(0, 12):
+                    mesText_easy += str(i+1) + "宮: "
+                    for star in house[i][0]:
+                        mesText_easy += star + "，"
+                    for star in house[i][1]:
+                        mesText_easy += star + "，"
+                    mesText_easy += "\n"
 
-            mesText +="ASC:   " + asc[ascNum] + "\n月亮: " + str(MoonNum+1) + "宮    太陽: " + str(SunNum+1) +\
-                    "宮\n水星: " + str((SunNum+qNum-1)%12+1) + "宮    金星: " + str((SunNum+wNum-2)%12+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
-                    str(rNum+1) + "宮\n土星: " + str(tNum+1) + "宮    天王星: " + str(yNum+1) + "宮\n海王星: " +\
-                    str(uNum+1) + "宮    冥王星: " + str(iNum+1) + "宮"
-                    
+                mesText += "\n\n事實盤:\n"
+                for i in range(0, 12):
+                    mesText += "-----" + str(i+1) + "宮: " + "金牛" + "-----"
+                    for star in house[i][0]:
+                        if star == house[i][0][0]:
+                           mesText += "\n[實] "
+                        mesText += star + "，"
+                    for star in house[i][1]:
+                        if star == house[i][1][0]:
+                           mesText += "\n[映] "
+                        mesText += star + "，"
+                    mesText += "\n----------\n"
+
+            # mesText +="ASC:   " + asc[ascNum] + "\n月亮: " + str(MoonNum+1) + "宮    太陽: " + str(SunNum+1) +\
+            #         "宮\n水星: " + str((SunNum+qNum-1)%12+1) + "宮    金星: " + str((SunNum+wNum-2)%12+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
+            #         str(rNum+1) + "宮\n土星: " + str(tNum+1) + "宮    天王星: " + str(yNum+1) + "宮\n海王星: " +\
+            #         str(uNum+1) + "宮    冥王星: " + str(iNum+1) + "宮"
+            
+            print(house)
+            #加入陣列 亂數完就計算結果值 並丟入相關的list裡 下面再直接輸出list的內容
+        message = [TextSendMessage(text=mesText_easy), 
+                    TextSendMessage(text=mesText)]
         line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=mesText))
+            event.reply_token, message)
         return 0
 
     if event.message.text == "不負責任猜題":
