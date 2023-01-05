@@ -39,15 +39,16 @@ url = parse.urlparse(config["line_bot"]["DATABASE_URL"])
 # url = parse.urlparse("postgres://zzrifkagqkgemk:3af561983d0a4b0d664e076c6ce0d195197aa8bda489a1780ae7a0f85f7a3193@ec2-3-217-113-25.compute-1.amazonaws.com:5432/dcvau9em219tjc")
 
 # print ("Opening database......")
-conn = psycopg2.connect(
-    database=url.path[1:],
-    user=url.username,
-    password=url.password,
-    host=url.hostname,
-    port=url.port
-)
-print ("Opened database successfully")
-cur = conn.cursor()
+###DATABASE
+# conn = psycopg2.connect(
+#     database=url.path[1:],
+#     user=url.username,
+#     password=url.password,
+#     host=url.hostname,
+#     port=url.port
+# )
+# print ("Opened database successfully")
+# cur = conn.cursor()
 
 """ 
 #CREATE TABLE
@@ -429,11 +430,12 @@ def handle_message(event):
     #         return 0
     # conn.commit()
 
-    cur.execute("""SELECT * FROM message WHERE datetime = %s AND mes = %s;""",(dbtim,dbmes))
-    row = cur.fetchone()
-    if row:
-        print("same message, quit Webhook redelivery") 
-        return 0
+    ###DATABASE
+    # cur.execute("""SELECT * FROM message WHERE datetime = %s AND mes = %s;""",(dbtim,dbmes))
+    # row = cur.fetchone()
+    # if row:
+    #     print("same message, quit Webhook redelivery") 
+    #     return 0
 
     print("lagTime:" + str(lagTime) + "  [" + event.message.text + "]")
     
@@ -457,11 +459,12 @@ def handle_message(event):
         dbid = event.source.user_id
         dbname = profile.display_name
         str(event.timestamp)
-        cur.execute(
-            """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s);""",
-            (dbid, dbname, dbmes, dbtim, dbts )
-        )
-        conn.commit()
+        ###DATABASE
+        # cur.execute(
+        #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s);""",
+        #     (dbid, dbname, dbmes, dbtim, dbts )
+        # )
+        # conn.commit()
     else:
         if isinstance(event.source, SourceGroup):
             # profile = line_bot_api.get_profile(event.source.group_id)
@@ -470,11 +473,12 @@ def handle_message(event):
             logMes = dbid + " - " + dbname + ": " + event.message.text + "[time: " + str(event.timestamp) + "]"
             print(logMes)
             # dbtim = str(event.timestamp)
-            cur.execute(
-                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s)""",
-                (dbid, dbname, dbmes, dbtim, dbts )
-            );
-            conn.commit()
+            ###DATABASE
+            # cur.execute(
+            #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s)""",
+            #     (dbid, dbname, dbmes, dbtim, dbts )
+            # );
+            # conn.commit()
         elif isinstance(event.source, SourceRoom):
             # profile = line_bot_api.get_profile(event.source.room_id)
             dbid = event.source.room_id
@@ -482,15 +486,16 @@ def handle_message(event):
             logMes = dbid + " - " + dbname + ": " + event.message.text + "[time: " + str(event.timestamp) + "]"
             print(logMes)
             # dbtim = str(event.timestamp)
-            cur.execute(
-                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s);""",
-                (dbid, dbname, dbmes, dbtim, dbts )
-            )
-            cur.execute(
-                """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s);""",
-                (dbid, 'me', '現已不支援Line Room模式', dbtim, dbts )
-            )
-            conn.commit()
+            ###DATABASE
+            # cur.execute(
+            #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s);""",
+            #     (dbid, dbname, dbmes, dbtim, dbts )
+            # )
+            # cur.execute(
+            #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s, %s);""",
+            #     (dbid, 'me', '現已不支援Line Room模式', dbtim, dbts )
+            # )
+            # conn.commit()
             line_bot_api.reply_message(event.reply_token,TextMessage(text='現已不支援Line Room模式'))
             return 0
 
@@ -524,7 +529,7 @@ def handle_message(event):
     # dbHaveMember = 0
     # dbHaveGroup = 0
     
-    if isinstance(event.source, SourceUser):
+    if 0:#if isinstance(event.source, SourceUser):###DATABASE
         """ 
         i = 0
         for rows in sheet.worksheet('用戶').get_all_values():
@@ -571,7 +576,7 @@ def handle_message(event):
         
 
 
-    elif isinstance(event.source, SourceGroup):
+    elif 0:# elif isinstance(event.source, SourceGroup): ###DATABASE
         """ 
         i = 0
         for rows in sheet.worksheet('用戶').get_all_values():
@@ -752,17 +757,19 @@ def handle_message(event):
     # themeNow = sheet.worksheet('用戶').cell(userRowNum, 9).value
     # if themeNow == None or themeNow == 0:
     #     themeNow = 'normal'
-    themeNow = 0
-    if not dbUserRowNum[9] or dbUserRowNum[9] == 0:
-        themeNow = 'normal'
-    else:
-        themeNow = dbUserRowNum[9]
+    ###DATABASE
+    # themeNow = 0
+    # if not dbUserRowNum[9] or dbUserRowNum[9] == 0:
+    #     themeNow = 'normal'
+    # else:
+    #     themeNow = dbUserRowNum[9]
+
     # if themeNow == None or themeNow == 0:
     #     themeNow = 'normal'
 
     # print(themeNow)
     
-    if '!猜' in event.message.text or '!a' in event.message.text or dbUserRowNum[8] == '1':
+    if 0:# '!猜' in event.message.text or '!a' in event.message.text or dbUserRowNum[8] == '1':###DATABASE
         lagLine = 5 #1A2Blag超過5秒就直接終止
         print("lagTime >= lagLine= " + str(lagTime >= lagLine))
         if lagTime >= lagLine :
