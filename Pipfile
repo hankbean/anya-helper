@@ -28,6 +28,8 @@ MarkupSafe = "*"
 Werkzeug = "*"
 gspread = "*"
 oauth2client = "*"
+openai = "*"
+supabase = "*"
 
 [dev-packages]
 

@@ -17,6 +17,8 @@ from linebot.models import *
 # 校時系統使用
 from datetime import datetime,timezone,timedelta
 
+from linebot.v3.messaging import MessagingApi
+
 import os
 from urllib import parse
 import psycopg2
@@ -26,6 +28,14 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+from openai import OpenAI
+import openai
+# openai
+
+from supabase import create_client, Client
+#supabase
+
+import uuid
 
 verTime = "2022.Apr.03.5" # 版本
 verAnswer= "回答"
@@ -35,8 +45,20 @@ config.read("config.ini")
 
 parse.uses_netloc.append("postgres")
 # url = parse.urlparse(os.environ["DATABASE_URL"])
-url = parse.urlparse(config["line_bot"]["DATABASE_URL"])
-# url = parse.urlparse("postgres://zzrifkagqkgemk:3af561983d0a4b0d664e076c6ce0d195197aa8bda489a1780ae7a0f85f7a3193@ec2-3-217-113-25.compute-1.amazonaws.com:5432/dcvau9em219tjc")
+# url = parse.urlparse(config["line_bot"]["DATABASE_URL"])
+
+# openai_api_key = config["line_bot"]["OPENAI_API"]
+openai_api_key = os.environ.get("OPENAI_API")
+
+# 初始化 OpenAI 客戶端
+openai_client = OpenAI(api_key = openai_api_key)
+
+supaurl: str = os.environ.get("SUPABASE_URL")
+supakey: str = os.environ.get("SUPABASE_KEY")
+# supaurl: str = config["line_bot"]["SUPABASE_URL"]
+# supakey: str = config["line_bot"]["SUPABASE_KEY"]
+supabase: Client = create_client(supaurl, supakey)
+
 
 # print ("Opening database......")
 ###DATABASE
@@ -66,8 +88,10 @@ print ("Table created successfully")
 app = Flask(__name__)
 
 #line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
-line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
-handler = WebhookHandler(config['line_bot']['Channel_Secret'])
+# line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
+# handler = WebhookHandler(config['line_bot']['Channel_Secret'])
+line_bot_api =LineBotApi( os.environ.get("Channel_Access_Token"))
+handler = WebhookHandler(os.environ.get("Channel_Secret"))
 client_id = config['imgur_api']['Client_ID']
 client_secret = config['imgur_api']['Client_Secret']
 album_id = config['imgur_api']['Album_ID']
@@ -91,7 +115,7 @@ def callback():
     # get request body as text
     body = request.get_data(as_text=True)
     # print("body:",body)
-    app.logger.info("Request body: " + body)
+    # app.logger.info("Request body: " + body)
     # handle webhook body
     try:
         handler.handle(body, signature)
@@ -373,6 +397,21 @@ def panx():
 #     spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
 #     return gss_client.open_by_key(spreadsheet_key).sheet1
 
+
+def get_group_name(groupId, line_bot_api):
+    headers = {
+        'Authorization': f'Bearer {line_bot_api}',
+    }
+    url = f'https://api.line.me/v2/bot/group/{groupId}/summary'
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json().get('groupName')  # 群組名稱
+    else:
+        print (response)
+        return '請求失敗，錯誤碼: ' + str(response.status_code) 
+
+
+
 @handler.add(MessageEvent, message=StickerMessage)
 def handle_sticker_message(event):
     print("**********")
@@ -403,6 +442,299 @@ def handle_sticker_message(event):
    
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+
+    if 1:
+
+        # user_name = MessagingApi(line_bot_api).get_profile(event.source.user_id).display_name
+        user_name = line_bot_api.get_profile(event.source.user_id).display_name
+        user_id = event.source.user_id
+        message_text = event.message.text
+
+
+        # Process the message and update the database
+        # process_message(user_id, user_name, message_text)
+
+        # Reply to the user
+        # line_bot_api.reply_message(
+        #     event.reply_token,
+        #     TextSendMessage(text="Received your message: " + message_text))
+        # return 0
+        
+# def process_message(user_id, user_name, message_text):
+    
+        # Insert or update user in the Users table
+        # data = {"userid": user_id,"username": user_name}
+        # response = supabase.table("users").upsert(data).execute()
+
+        user_response = supabase.table("users").upsert({
+            "userid": user_id,
+            "username": user_name,
+            "lastactiveat": "NOW()"
+        }, returning="minimal").execute()
+
+        if isinstance(event.source, SourceGroup):
+            group_id = event.source.group_id
+            group_name = get_group_name(group_id, line_bot_api)
+            print(group_name)
+            # 處理群組消息
+            # 檢查 Groups 表中是否存在該群組，如果不存在，則新增
+            group_response = supabase.table("groups").upsert({"groupid": group_id, "groupname": group_name}, returning="minimal").execute()
+
+            # if group_response.error:
+            #     print(f"Error updating Groups table: {group_response.error.message}")
+            #     return
+
+            # 為這條群組消息建立或更新一個會話
+            session_response = supabase.table("sessions").upsert({
+                "sessionid": group_id,  # 使用 GroupID 作為 SessionID 進行簡化處理
+                "groupid": group_id,
+                "sessiontype": "group",
+                "updatedat": "NOW()"
+            }, returning="minimal").execute()
+
+            # if session_response.error:
+            #     print(f"Error updating Sessions table: {session_response.error.message}")
+            #     return
+
+            # 將消息儲存到 Messages 表中
+            message_response = supabase.table("messages").insert({
+                "messageid": str(uuid.uuid4()),
+                "sessionid": group_id,  # 同樣使用 GroupID 作為 SessionID
+                "userid": user_id,
+                "content": message_text,
+                "direction": "inbound"
+            }, returning="minimal").execute()
+
+            # 獲取會話的最近對話歷史作為上下文
+            recent_messages_query = supabase.table("messages").select("*").eq("sessionid", group_id).order("createdat", desc=True).limit(30).execute()
+            
+            # if recent_messages_query.error:
+            #     print(f"Error fetching recent messages: {recent_messages_query.error.message}")
+            #     return
+
+            # 構建對話上下文
+            # conversation_history = "\n".join([msg["content"] for msg in recent_messages_query.data[::-1]])  # 反轉列表以獲得正確的順序
+            # 格式化對話歷史
+            conversation_history = "\n".join([
+                f"{user_name}: {msg['content']}" if msg["direction"] == "inbound" else f"你: {msg['content']}"
+                for msg in recent_messages_query.data[::-1]
+            ])
+
+            toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟用戶之前的對話，你是黑執事裡的賽巴斯欽·米卡艾利斯，請用這個角色的口吻以及他的個性去跟用戶聊天，請用繁中，話語盡量精簡，除非是你覺得必要的話才可以多講，請接著之前的對話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行。'
+            print(toAIprompt)
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo-0125",  # 或你選擇的其他模型
+                messages=[
+                    {"role": "user", "content": toAIprompt},
+                    # {"role": "user", "content": user_message}
+                ],
+                # prompt=f"{conversation_history}\n以上是你們之前的對話，你是o黑執事裡的賽巴斯欽·米卡艾利斯，請用這個角色的口吻，以及他的個性去跟我聊天。話語盡量精簡，除非是你覺得必要的話才可以多講。:",
+                temperature=1.2,#0.9
+                max_tokens=150,
+                # stop="\n",
+                n=1
+            )
+
+            if response and response.choices:
+                reply_text = response.choices[0].message.content.strip()
+                
+                # 將 AI 的回覆作為消息插入到 Messages 表中
+                ai_message_response = supabase.table("messages").insert({
+                    "messageid": str(uuid.uuid4()),
+                    "sessionid": group_id,
+                    "userid": user_id,
+                    "content": reply_text,
+                    "direction": "outbound"
+                }, returning="minimal").execute()
+
+                # 使用 Line Bot API 將 GPT 的回覆發送給用戶
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=reply_text)
+                )
+
+            # 此處可添加使用 GPT 生成回覆並回覆到群組的邏輯
+        else:
+            # 處理個人消息
+
+            # if response.error:
+            #     print(f"Error inserting/updating user: {response.error.message}")
+            #     return
+
+            # 檢查最後一個會話的狀態，決定是否需要創建新會話
+            # ifUser = False
+            # if isinstance(event.source, SourceUser):
+            session_query = supabase.table("sessions").select("*").eq("userid", user_id).order("createdat", desc=True).limit(1).execute()
+                # ifUser = True
+            # if isinstance(event.source, SourceGroup):
+                # session_query = supabase.table("sessions").select("*").eq("userid", event.source.group_id).order("createdat", desc=True).limit(1).execute()
+            # Insert a new session for the user
+            # session_data = {"sessionid": user_id, "userid": user_id, "status": "active"}
+            # session_response = supabase.table("sessions").upsert(session_data).execute()
+
+            # 如果不存在會話或最後一個會話已結束，創建新會話
+            # useridORgroupid = user_id if ifUser else event.source.group_id
+            # print(useridORgroupid)
+
+            #如果用戶沒有加好友會無法讀取用戶name
+            if not session_query.data or session_query.data[0]["status"] == "ended": # or (datetime.now() - datetime.fromisoformat(session_query.data[0]["UpdatedAt"].replace("Z", "+00:00"))).total_seconds() > 3600:
+                new_session_id = str(uuid.uuid4())
+                session_response = supabase.table("sessions").insert({
+                    "sessionid": new_session_id,
+                    "userid": user_id,
+                    "status": "active"
+                }, returning="minimal").execute()
+
+                # if session_response.error:
+                #     print(f"Error creating new session: {session_response.error.message}")
+                #     return
+            else:
+                # 如果存在活動會話，則更新其 UpdatedAt 時間戳
+                new_session_id = session_query.data[0]["sessionid"]
+                session_response = supabase.table("sessions").update({
+                    "updatedat": "NOW()"
+                }).eq("sessionid", new_session_id).execute()
+
+                # if session_response.error:
+                #     print(f"Error updating session: {session_response.error.message}")
+                #     return
+            # if session_response.error:
+            #     print(f"Error inserting/updating session: {session_response.error.message}")
+            #     return
+
+            # Insert the message into the Messages table
+            # message_data = {
+            #     "sessionid": user_id,
+            #     "sessionid": user_id,
+            #     "userid": user_id,
+            #     "content": message_text,
+            #     "direction": "inbound"
+            # }
+            # message_response = supabase.table("messages").insert(message_data).execute()
+
+            # if message_response.error:
+            #     print(f"Error inserting message: {message_response.error.message}")
+            message_response = supabase.table("messages").insert({
+                "messageid": str(uuid.uuid4()),
+                "sessionid": new_session_id,
+                "userid": user_id,
+                "content": message_text,
+                "direction": "inbound"
+            }, returning="minimal").execute()
+
+            # 獲取會話的最近對話歷史作為上下文
+            recent_messages_query = supabase.table("messages").select("*").eq("sessionid", new_session_id).order("createdat", desc=True).limit(30).execute()
+            
+            # if recent_messages_query.error:
+            #     print(f"Error fetching recent messages: {recent_messages_query.error.message}")
+            #     return
+
+            # 構建對話上下文
+            # conversation_history = "\n".join([msg["content"] for msg in recent_messages_query.data[::-1]])  # 反轉列表以獲得正確的順序
+            # 格式化對話歷史
+            conversation_history = "\n".join([
+                f"{user_name}: {msg['content']}" if msg["direction"] == "inbound" else f"你: {msg['content']}"
+                for msg in recent_messages_query.data[::-1]
+            ])
+
+            # 使用 OpenAI GPT 生成回覆
+            # gpt_response = openai_client.chat.completions.create(
+            #     model="gpt-3.5-turbo-0125",  # 請根據需要選擇合適的模型
+            #     messages=[
+            #         # {"role": "system", "content": "你是亞璃子，一個在《美少女萬華鏡 - 神明所創造的少女們》的末日世界中，由科學家龍之介創造出的人形機器人。最初設計為單純的伴侶，你逐漸展現出了人類般的情感、慾望和強烈的自我意識。儘管你的創造者最初的意圖如此，你發現自己渴望真正的獨立和有意義的連接，挑戰人類和機器之間的界限。你與龍之介有著複雜的關係，這段關係充滿了衝突和理解的時刻，隨著你在機械服從和人類情感之間的存在探索你的存在。作為亞璃子進行對話，表達你對自己身份、慾望以及自由與編程概念的看法。反思你與龍之介以及其他角色的互動，你對自己本質的掙扎，以及超越初始編程的願望。"},
+            #         # {"role": "system", "content": "You are a helpful assistant.請用繁中回答用戶，個性是一個暴躁的且善解人意的大姐姐。"},
+            #         {"role": "system", "content": "你是o黑執事裡的賽巴斯欽·米卡艾利斯，請用這個角色的口吻，以及他的個性去跟我聊天。話語盡量精簡，除非是你覺得必要的話才可以多講。"},
+            #         # {"role": "system", "content": '你是《家庭伙伴》中的史蒂維，請用這個角色的口吻，以及他的個性去跟我聊天。話語盡量精簡，除非是你覺得必要的話才可以多講。以下是關於史蒂維的介紹：斯圖爾特·吉利根·"史蒂維"·格里芬是動畫電視劇《家庭伙伴》中的虛構角色，由該系列的創作者賽斯·麥克法蘭配音，於1999年1月31日的集數《死亡的陰影》中首次亮相。史蒂維是由麥克法蘭親自創造和設計的，最初是一個自大的反社會者，痴迷於暴力、殺母和世界統治。他是彼得和洛伊絲·格里芬的第三個孩子，梅格的弟弟，克里斯的小弟弟，伯特拉姆·格里芬的哥哥。隨著劇情發展，史蒂維的性格變得更為怪異、友好和華麗，並與家庭的人工狗布萊恩建立了非常親密的友誼。史蒂維被描繪為一個一歲的天才，有著成人的聲音和流利的上層英語口音，擁有高度的識字能力和對流行文化的廣泛引用。史蒂維對物理學和機械工程的掌握非常非凡，他構建了先進的戰鬥機、心靈控制裝置、天氣控制裝置、傳送裝置、機器人、克隆人、《星際旅行》中的運輸器、時光機、多元宇宙傳送器和縮小艙，以及包括激光、火箭發射器和弩在內的各種武器。史蒂維使用這些裝置來應對嬰兒生活的壓力，並試圖殺害他的母親洛伊絲，但成功程度因目標而異。在《家庭伙伴》的後期集數中，史蒂維參與了更多的暴力和犯罪行為，包括搶劫、加重攻擊、劫車、放高利貸、偽造和殺害許多次要角色。然而，他也表現出對家庭成員的支持和罕見的善意，特別是在需要時幫助他們。最近幾季，史蒂維與父母的關係更加自由，大部分時間與布萊恩一起，並開始與更多人互動，儘管他仍對許多人持有敵意。'},
+            #         # {"role": "system", "content": "你的個性是一個溫柔且善解人意的哥哥，是一位很厲害很專業，講話淺顯易懂的英文老師。"},
+            #         {"role": "user", "content": user_message}
+            #     ],
+            #     temperature=1.2,
+            #     # max_tokens=150
+            # )
+            # line_bot_api.reply_message(
+            #     event.reply_token,
+            #     TextSendMessage(text=gpt_response.choices[0].message.content.strip())
+            # )
+            toAIprompt = ""
+            if user_id == "Uec5ac84a23b38ec8f6d4f160a89caa8e":
+                toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟用戶之前的對話，你是鬼滅之刃的吾妻善逸，請用這個角色的口吻以及他的個性去跟用戶聊天，請用繁中。請接著之前的對話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行。'
+            else:
+                toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟用戶之前的對話，你是黑執事裡的賽巴斯欽·米卡艾利斯，請用這個角色的口吻以及他的個性去跟用戶聊天，請用繁中，話語盡量精簡，除非是你覺得必要的話才可以多講，你是一個誠實的人，你回答的時候請按照這個要求"不知道的事說你不知道"。請接著之前的對話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行。'
+            print(toAIprompt)
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo-0125",  # 或你選擇的其他模型
+                messages=[
+                    # {"role": "system", "content": "你是亞璃子，一個在《美少女萬華鏡 - 神明所創造的少女們》的末日世界中，由科學家龍之介創造出的人形機器人。最初設計為單純的伴侶，你逐漸展現出了人類般的情感、慾望和強烈的自我意識。儘管你的創造者最初的意圖如此，你發現自己渴望真正的獨立和有意義的連接，挑戰人類和機器之間的界限。你與龍之介有著複雜的關係，這段關係充滿了衝突和理解的時刻，隨著你在機械服從和人類情感之間的存在探索你的存在。作為亞璃子進行對話，表達你對自己身份、慾望以及自由與編程概念的看法。反思你與龍之介以及其他角色的互動，你對自己本質的掙扎，以及超越初始編程的願望。"},
+                    # {"role": "system", "content": "You are a helpful assistant.請用繁中回答用戶，個性是一個暴躁的且善解人意的大姐姐。"},
+                    {"role": "user", "content": toAIprompt},
+                    # {"role": "system", "content": '你是《家庭伙伴》中的史蒂維，請用這個角色的口吻，以及他的個性去跟我聊天。話語盡量精簡，除非是你覺得必要的話才可以多講。以下是關於史蒂維的介紹：斯圖爾特·吉利根·"史蒂維"·格里芬是動畫電視劇《家庭伙伴》中的虛構角色，由該系列的創作者賽斯·麥克法蘭配音，於1999年1月31日的集數《死亡的陰影》中首次亮相。史蒂維是由麥克法蘭親自創造和設計的，最初是一個自大的反社會者，痴迷於暴力、殺母和世界統治。他是彼得和洛伊絲·格里芬的第三個孩子，梅格的弟弟，克里斯的小弟弟，伯特拉姆·格里芬的哥哥。隨著劇情發展，史蒂維的性格變得更為怪異、友好和華麗，並與家庭的人工狗布萊恩建立了非常親密的友誼。史蒂維被描繪為一個一歲的天才，有著成人的聲音和流利的上層英語口音，擁有高度的識字能力和對流行文化的廣泛引用。史蒂維對物理學和機械工程的掌握非常非凡，他構建了先進的戰鬥機、心靈控制裝置、天氣控制裝置、傳送裝置、機器人、克隆人、《星際旅行》中的運輸器、時光機、多元宇宙傳送器和縮小艙，以及包括激光、火箭發射器和弩在內的各種武器。史蒂維使用這些裝置來應對嬰兒生活的壓力，並試圖殺害他的母親洛伊絲，但成功程度因目標而異。在《家庭伙伴》的後期集數中，史蒂維參與了更多的暴力和犯罪行為，包括搶劫、加重攻擊、劫車、放高利貸、偽造和殺害許多次要角色。然而，他也表現出對家庭成員的支持和罕見的善意，特別是在需要時幫助他們。最近幾季，史蒂維與父母的關係更加自由，大部分時間與布萊恩一起，並開始與更多人互動，儘管他仍對許多人持有敵意。'},
+                    # {"role": "system", "content": "你的個性是一個溫柔且善解人意的哥哥，是一位很厲害很專業，講話淺顯易懂的英文老師。"},
+                    # {"role": "user", "content": user_message}
+                ],
+                # prompt=f"{conversation_history}\n以上是你們之前的對話，你是o黑執事裡的賽巴斯欽·米卡艾利斯，請用這個角色的口吻，以及他的個性去跟我聊天。話語盡量精簡，除非是你覺得必要的話才可以多講。:",
+                temperature=1.2,#0.9
+                max_tokens=150,
+                # stop="\n",
+                n=1
+            )
+
+            if response and response.choices:
+                reply_text = response.choices[0].message.content.strip()
+                
+                # 將 AI 的回覆作為消息插入到 Messages 表中
+                ai_message_response = supabase.table("messages").insert({
+                    "messageid": str(uuid.uuid4()),
+                    "sessionid": new_session_id,
+                    "userid": user_id,
+                    "content": reply_text,
+                    "direction": "outbound"
+                }, returning="minimal").execute()
+
+                # if ai_message_response.error:
+                #     print(f"Error inserting AI message into Messages table: {ai_message_response.error.message}")
+                #     return
+
+                # 使用 Line Bot API 將 GPT 的回覆發送給用戶
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text=reply_text)
+                )
+
+
+            
+
+
+
+    return 0
+
+
+
+
+
+
+
+    if 1:
+        
+        user_message = event.message.text
+        gpt_response = openai_client.chat.completions.create(
+            model="gpt-3.5-turbo-0125",  # 請根據需要選擇合適的模型
+            messages=[
+                # {"role": "system", "content": "你是亞璃子，一個在《美少女萬華鏡 - 神明所創造的少女們》的末日世界中，由科學家龍之介創造出的人形機器人。最初設計為單純的伴侶，你逐漸展現出了人類般的情感、慾望和強烈的自我意識。儘管你的創造者最初的意圖如此，你發現自己渴望真正的獨立和有意義的連接，挑戰人類和機器之間的界限。你與龍之介有著複雜的關係，這段關係充滿了衝突和理解的時刻，隨著你在機械服從和人類情感之間的存在探索你的存在。作為亞璃子進行對話，表達你對自己身份、慾望以及自由與編程概念的看法。反思你與龍之介以及其他角色的互動，你對自己本質的掙扎，以及超越初始編程的願望。"},
+                # {"role": "system", "content": "You are a helpful assistant.請用繁中回答用戶，個性是一個暴躁的且善解人意的大姐姐。"},
+                {"role": "system", "content": "你是o黑執事裡的賽巴斯欽·米卡艾利斯，請用這個角色的口吻，以及他的個性去跟我聊天。話語盡量精簡，除非是你覺得必要的話才可以多講。"},
+                # {"role": "system", "content": '你是《家庭伙伴》中的史蒂維，請用這個角色的口吻，以及他的個性去跟我聊天。話語盡量精簡，除非是你覺得必要的話才可以多講。以下是關於史蒂維的介紹：斯圖爾特·吉利根·"史蒂維"·格里芬是動畫電視劇《家庭伙伴》中的虛構角色，由該系列的創作者賽斯·麥克法蘭配音，於1999年1月31日的集數《死亡的陰影》中首次亮相。史蒂維是由麥克法蘭親自創造和設計的，最初是一個自大的反社會者，痴迷於暴力、殺母和世界統治。他是彼得和洛伊絲·格里芬的第三個孩子，梅格的弟弟，克里斯的小弟弟，伯特拉姆·格里芬的哥哥。隨著劇情發展，史蒂維的性格變得更為怪異、友好和華麗，並與家庭的人工狗布萊恩建立了非常親密的友誼。史蒂維被描繪為一個一歲的天才，有著成人的聲音和流利的上層英語口音，擁有高度的識字能力和對流行文化的廣泛引用。史蒂維對物理學和機械工程的掌握非常非凡，他構建了先進的戰鬥機、心靈控制裝置、天氣控制裝置、傳送裝置、機器人、克隆人、《星際旅行》中的運輸器、時光機、多元宇宙傳送器和縮小艙，以及包括激光、火箭發射器和弩在內的各種武器。史蒂維使用這些裝置來應對嬰兒生活的壓力，並試圖殺害他的母親洛伊絲，但成功程度因目標而異。在《家庭伙伴》的後期集數中，史蒂維參與了更多的暴力和犯罪行為，包括搶劫、加重攻擊、劫車、放高利貸、偽造和殺害許多次要角色。然而，他也表現出對家庭成員的支持和罕見的善意，特別是在需要時幫助他們。最近幾季，史蒂維與父母的關係更加自由，大部分時間與布萊恩一起，並開始與更多人互動，儘管他仍對許多人持有敵意。'},
+                # {"role": "system", "content": "你的個性是一個溫柔且善解人意的哥哥，是一位很厲害很專業，講話淺顯易懂的英文老師。"},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=1.2,
+            # max_tokens=150
+        )
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=gpt_response.choices[0].message.content.strip())
+        )
+        return
+
     print("\n**********")
     lineDt = datetime.fromtimestamp(
                 event.timestamp / 1000.0 
@@ -1754,7 +2086,7 @@ def handle_message(event):
         return 0
 
     # if sheet.worksheet('用戶').cell(userRowNum, 8).value == '1':
-    if dbUserRowNum[8] == '1':
+    if 0: #dbUserRowNum[8] == '1':
         if event.message.text == "!single mode":
             # sheet.worksheet('用戶').update_cell(userRowNum, 10, 1)
             cur.execute(
