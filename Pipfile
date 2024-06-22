@@ -30,6 +30,7 @@ gspread = "*"
 oauth2client = "*"
 openai = "*"
 supabase = "*"
+pyimgur = "*"
 
 [dev-packages]
 

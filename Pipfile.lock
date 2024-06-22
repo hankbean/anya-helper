@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "c645c0363b06fffbb8fec0d84e03247f3aca8bb77f90aa88faf37abbdb59a918"
+            "sha256": "ae0f0d18d3a85a08701f43a4c4549ccf7891706f8a869c103eaf78ab13da42a3"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -842,12 +842,12 @@
         },
         "openai": {
             "hashes": [
-                "sha256:e0f388ce499f53f58079d0c1f571f356f2b168b84d0d24a412506b6abc714980",
-                "sha256:f66b8fe431af43e09594147ef3cdcb79758285de72ebafd52be9700a2af41e99"
+                "sha256:99c5d257d09ea6533d689d1cc77caa0ac679fa21efef8893d8b0832a86877f1b",
+                "sha256:a54002c814e05222e413664f651b5916714e4700d041d5cf5724d3ae1a3e3481"
             ],
             "index": "pypi",
             "markers": "python_full_version >= '3.7.1'",
-            "version": "==1.11.1"
+            "version": "==1.12.0"
         },
         "packaging": {
             "hashes": [
@@ -1060,6 +1060,14 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==2.16.2"
+        },
+        "pyimgur": {
+            "hashes": [
+                "sha256:ad22deea062fe8e7412d0bdfc70cbf305a828c6390096d3523ed3d7dbeb2bdff",
+                "sha256:f776ca7f14663bd9ac14a1380db62c87ed32231d159d2d167ad1cb817dcb9144"
+            ],
+            "index": "pypi",
+            "version": "==0.6.0"
         },
         "pyparsing": {
             "hashes": [
