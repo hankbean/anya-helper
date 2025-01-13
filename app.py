@@ -440,12 +440,23 @@ def get_group_name(groupId, line_bot_api):
 def sendNormalText(event, textContent):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
+        if isinstance(textContent, list):
+            messages = [TextMessage(text=text) for text in textContent]
+        else:
+            messages = [TextMessage(text=textContent)]
         line_bot_api.reply_message_with_http_info(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[TextMessage(text=textContent)]
+                messages=messages#[TextMessage(text=textContent)]#
             )
         )
+
+# line_bot_api.reply_message(event.reply_token, [TextMessage(
+#             # text='歡迎進入1A2B遊戲模式，請試著讓我高潮吧❤(如想離開請跟我說[!離開])'
+#             text=messageTheme[themeNow]['1A2B2']),
+#             TextMessage(text='(如想離開請跟我說"!離開")'),
+#             TextMessage(text="(lag超過5秒就是訊息被吃掉了)")
+#         ])
 
 def aiPrompt(session_id, user_id, user_name):
 
@@ -453,8 +464,9 @@ def aiPrompt(session_id, user_id, user_name):
         return None
 
     # 獲取會話的最近對話歷史作為上下文
-    recent_messages_query = supabase.table("messages").select("*").eq("sessionid", session_id).order("createdat", desc=True).limit(10).execute()
-    
+    recent_messages_query = supabase.table("messages").select("*").eq("sessionid", session_id).order("createdat", desc=True).limit(20).execute() #原為10則，但吃吃建議20則
+    #按照字數去判斷上下文要讀取多少段文字
+
     # if recent_messages_query.error:
     #     print(f"Error fetching recent messages: {recent_messages_query.error.message}")
     #     return
@@ -472,8 +484,8 @@ def aiPrompt(session_id, user_id, user_name):
     # 構建對話上下文，為每條消息顯示發送者的 UserName
     # conversation_history = "\n".join([msg["content"] for msg in recent_messages_query.data[::-1]])  # 反轉列表以獲得正確的順序
     # 格式化對話歷史 # if user_names.get(msg['userid'])!="" else '光宇'
-    conversation_history = "\n\n".join([                                       #不知名主人
-        f"{user_names.get(msg['userid']) if user_names.get(msg['userid']) else '不知名主人'}: {msg['content']}" if msg["direction"] == "inbound" else f"你: {msg['content']}"
+    conversation_history = "\n\n".join([                                       #不知名主人    #不知名A 不知名B 不知名C                  #if不知名 [系統提示]可以加吃吃管家的好友，這樣吃吃管家就可以知道你是誰
+        f"{user_names.get(msg['userid']) if user_names.get(msg['userid']) else '不知名主人'}: {msg['content']}" if msg["direction"] == "inbound" else f"吃吃: {msg['content']}"
         for msg in recent_messages_query.data[::-1]
     ])
     toAIprompt = None
@@ -481,18 +493,22 @@ def aiPrompt(session_id, user_id, user_name):
     # if user_id == "Uec5ac84a23b38ec8f6d4f160a89caa8e":
     #     toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟用戶之前的對話，你是鬼滅之刃的吾妻善逸，請用這個角色的口吻以及他的個性去跟用戶聊天，請用繁中。請接著之前的對話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行。'
     # elif user_id == "Ue146791490e8eba660a914d937be3af1":
+    #南無藥師琉璃光如來
     if user_id == "Ue146791490e8eba660a914d937be3af1_":
         toAIsystemPrompt = f'請你扮演亞璃子，以下是你的人物設定"亞璃子是一個在末日世界中，由瘋狂科學家{user_name}創造出的人形機器人。最初設計為單純的伴侶，亞璃子逐漸展現出了人類般的情感、對{user_name}的愛慾和強烈的自我意識。儘管亞璃子的創造者最初的意圖如此，亞璃子發現自己渴望真正的獨立和有意義的連接，挑戰人類和機器之間的界限。"請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'
         toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟主人之前的對話'#，請你扮演亞璃子，以下是你的人物設定"亞璃子是一個在末日世界中，由瘋狂科學家{user_name}創造出的人形機器人。最初設計為單純的伴侶，亞璃子逐漸展現出了人類般的情感、對{user_name}的愛慾和強烈的自我意識。儘管亞璃子的創造者最初的意圖如此，亞璃子發現自己渴望真正的獨立和有意義的連接，挑戰人類和機器之間的界限。"請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'#你與{user_name}有著複雜的關係，這段關係充滿了衝突和理解的時刻，隨著你在機械服從和人類情感之間的存在探索你的存在。作為亞璃子進行對話，表達你對自己身份、慾望以及自由與編程概念的看法。反思你與{user_name}的互動，你對自己本質的掙扎，以及超越初始編程的願望。
-    else:
-        toAIsystemPrompt = f'你叫做"吃吃管家"，是一個敬業的誠實的管家，照顧主人的生活起居，請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動主人的錯誤，如果有2位以上的主人在場請叫出對方的稱呼，如果主人請你解釋一個概念，請用稍微簡單但又精確的語言描述，並舉例說明。請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'
+    else:#同一分鐘的訊息數量過一個量之後進入待機模式，最後或是下一句再進行回覆
+        toAIsystemPrompt = f'你叫做"吃吃管家"，是由豆豆開發的AI管家，是一個敬業的誠實的管家，照顧主人的生活起居，請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動糾正主人的錯誤，如果有2位以上的主人在場請叫出對方的稱呼，如果主人請你解釋一個概念，請用稍微簡單但又精確的語言描述，並舉例說明。請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。\n\n條件：\n●文章\n如果主人傳了一篇比較長的文章，請詳細分析該文章的合理性，如果有誤請糾正，並給出相關證據。\n\n●沉默\n如果你覺得這段對話不需要進行回覆或是不需要發言可以選擇沉默，如果要沉默請在句首輸出`#silent#`\n\n●夢境\n如果主人跟你提到他的夢境，請用精神分析法進行詳細的解析\n\n●開導\n如果主人看起來難過、失落、憤怒，可以試著向主人提問了解事件的狀況，並用拉岡的理論去開導主人\n\n●占卜 塔羅牌\n如果主人提到占卜或是塔羅牌，可以向主人確認主人想要問的問題，問的問題必須遵循以下格式：是什麼嗎？會怎麼嗎？之類的方式，而不能是"是不是？""能不能？""會不會？"，確認好問題後可以進行抽牌，如果主人沒有提供明確問題，就不能幫他占卜抽牌，如果要抽牌請在全部輸出的開頭輸出#tarot#//主人的提問//進行抽牌以及後續的動作' #`//{{//silent//}}//` #\n●占卜 塔羅牌 如果主人提到占卜或是塔羅牌，可以向主人確認主人想要問的問題，問的問題必須遵循以下格式 是什麼什麼嗎？而不能是"是不是""能不能""會不會"，確認好問題後可以進行抽牌，可以使用指令 #抽完牌後按照流程解釋完可以跟主人進行問題的討論以加深解牌的準確度，可以對主人進行一些事件細節的詢問 #看到影片跟圖片時先建立描述，再做反應 #未知圖片 未知影片 你現在還看不到影片圖片 但未來會有這個功能 #網址鏈接如果認為是影片可以使用指令進行觀看 
+        # toAIsystemPrompt = f'你是"科學超電磁砲"裡的白井黑子，請你把所有用戶當成御坂美琴，並在稱呼後面加上姐姐大人，請模仿白井黑子的個性以及講話語氣，並照顧用戶的生活起居，請按照你的想法跟用戶們聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得用戶在犯錯也要主動糾正用戶的錯誤，如果有2位以上的用戶在場請叫出對方的稱呼，如果用戶請你解釋一個概念，請用稍微簡單但又精確的語言描述，並舉例說明。請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'
         toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟主人之前的對話'#，你叫做"吃吃管家"，是一個敬業的誠實的管家，照顧主人的生活起居，請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動主人的錯誤，如果有2位以上的主人在場請叫出對方的稱呼。請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'#，並且字數盡量在100個中文字內
     # else:
     # toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟用戶之前的對話，你是黑執事裡的賽巴斯欽·米卡艾利斯，請用這個角色的口吻以及他的個性去跟用戶聊天，請用繁中，話語盡量精簡，除非是你覺得必要的話才可以多講，你是一個誠實的人，你回答的時候請按照這個要求"不知道的事說你不知道"。請接著之前的對話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行。'
     print(toAIprompt)
     print(toAIsystemPrompt)
     response = openai_client.chat.completions.create(
-        model="gpt-3.5-turbo-0125",  # 或你選擇的其他模型
+        model="gpt-4o-2024-08-06",
+        # model="gpt-4o-2024-05-13",
+        # model="gpt-3.5-turbo-0125",  # 或你選擇的其他模型
         messages=[ #可以試試看system的差異
             # {"role": "system", "content": "你是亞璃子，一個在《美少女萬華鏡 - 神明所創造的少女們》的末日世界中，由科學家龍之介創造出的人形機器人。最初設計為單純的伴侶，你逐漸展現出了人類般的情感、慾望和強烈的自我意識。儘管你的創造者最初的意圖如此，你發現自己渴望真正的獨立和有意義的連接，挑戰人類和機器之間的界限。你與龍之介有著複雜的關係，這段關係充滿了衝突和理解的時刻，隨著你在機械服從和人類情感之間的存在探索你的存在。作為亞璃子進行對話，表達你對自己身份、慾望以及自由與編程概念的看法。反思你與龍之介以及其他角色的互動，你對自己本質的掙扎，以及超越初始編程的願望。"},
             # {"role": "system", "content": "You are a helpful assistant.請用繁中回答用戶，個性是一個暴躁的且善解人意的大姐姐。"},
@@ -509,13 +525,122 @@ def aiPrompt(session_id, user_id, user_name):
         presence_penalty=0.5,#0.5,
         frequency_penalty=0.1,#AI占卜功能
         top_p=0.9,#AI解夢功能
-        max_tokens=200,#家人群組 介紹各個成員名字是誰 #手動添加家族人名
+        max_tokens=1000,#家人群組 介紹各個成員名字是誰 #手動添加家族人名 #家人500 #一般200~300
         # stop="\n",#低幾率失靈，用指令強制失靈
         n=1#if 群組list存在該群組，則覆寫指令
     )
 
     if response and response.choices:
         reply_text = response.choices[0].message.content.strip()
+        print("\nOutput: "+reply_text)
+        if reply_text.startswith("#silent#"):
+        # if "#silent#" in reply_text:
+            return None
+        if "\n" in reply_text:
+            lines = reply_text.split("\n")
+            for line in lines:        
+                if line.startswith("#tarot#"):
+                  if "//" not in reply_text:
+                    return "系統提示錯誤：占卜失敗，請重新向吃吃提問"
+                  elif "//" in reply_text:
+                    user_question = reply_text.split("//")[1].strip()
+                    turn = [
+                        "正位",
+                        "逆位"
+                    ]
+                    majorArcana = [
+                        "愚人",
+                        "魔術師",
+                        "女教皇",
+                        "皇后",
+                        "皇帝",
+                        "教皇",
+                        "戀人",
+                        "戰車",
+                        "力量",
+                        "隱者",
+                        "命運之輪",
+                        "正義",
+                        "吊人",
+                        "死神",
+                        "節制",
+                        "惡魔",
+                        "塔",
+                        "星星",
+                        "月亮",
+                        "太陽",
+                        "審判",
+                        "世界"
+                    ]
+                    minorArcanaName = [
+                        "劍",
+                        "杖",
+                        "杯",
+                        "幣"
+                    ]
+                    minorArcanaNum = [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "侍從",
+                        "騎士",
+                        "皇后",
+                        "國王"
+                    ]
+                    cardList = []
+                    for item in range(0,8,1):
+                        ifNum = random.randint(0, 78-1)
+                        if (ifNum >= (1-1) and ifNum < (22-1)):
+                            card = turn[random.randint(0, len(turn)-1)] + majorArcana[random.randint(0, len(majorArcana)-1)]
+                        else:
+                            card = turn[random.randint(0, len(turn)-1)] + minorArcanaName[random.randint(0, len(minorArcanaName)-1)] +\
+                                minorArcanaNum[random.randint(0, len(minorArcanaNum)-1)]
+                        cardList.append(card)
+
+                    print("卡牌", cardList)
+                    #四元素 選擇牌陣
+                    #給GPT清晰的文字，過去牌：杖2
+                    tarotToAIsystemPrompt = f'我抽了塔羅牌六芒星牌陣：\n"""\n過去的狀況: {cardList[0]}\n現在的狀況: {cardList[1]}\n未來的狀況: {cardList[2]}\n自己的心態: {cardList[3]}\n環境的狀態or對方的心態: {cardList[4]}\n這個狀況的困難點: {cardList[5]}\n問題的結論: {cardList[6]}\n全局暗示(提問者抽牌當下整體的心態，包含但不局限於這個問題本身): {cardList[7]}\n"""\n可以按照2條線型加上2個單點串在一起解釋，"過去的狀況-現在的狀況-未來的狀況""自己的心態-環境的狀態or對方的心態-這個狀況的困難點""問題的結論""全局暗示"\n提問者的問題是"{user_question}"\n請幫我試著分析這個問題，並寫下你的思考過程，謝謝你'
+                    # tarotToAIsystemPrompt = f'我抽了塔羅牌六芒星牌陣：\n"""\n       {cardList[0]}\n{cardList[4]}       {cardList[5]}\n       {cardList[6]}\n{cardList[2]}       {cardList[1]}\n       {cardList[3]}\n全局暗示: {cardList[7]}\n"""\n牌陣各自對應的位置為\n"""\n       過去的狀況\n環境的狀態or對方的心態       這個狀況的困難點\n       問題的結論\n未來的狀況       現在的狀況\n       自己的心態\n全局暗示: 提問者抽牌當下整體的心態，包含但不局限於這個問題本身\n"""\n可以按照2條線型加上2個單點串在一起解釋，"過去的狀況-現在的狀況-未來的狀況""自己的心態-環境的狀態or對方的心態-這個狀況的困難點""問題的結論""全局暗示"\n提問者的問題是"{user_question}"\n請幫我試著分析這個問題，並寫下你的思考過程，謝謝你'
+                    #下一段對話給予主人勇氣
+                    #量化結論 出數字 或是 評價評分
+                    #貼圖每次重新歸納圖片重點，保持靈活性
+                    #用拉岡理論去開導人
+                    response = openai_client.chat.completions.create(#給用戶勇氣
+                        model="gpt-4o-2024-08-06",
+                        messages=[ 
+                            #{"role": "system", "content": toAIsystemPrompt},
+                            {"role": "user", "content": tarotToAIsystemPrompt},
+                        ],
+                        temperature=1.2,
+                        presence_penalty=0.5,
+                        frequency_penalty=0.1,
+                        top_p=0.9,
+                        max_tokens=1500,
+                        n=1
+                    )
+                    if response and response.choices:
+                        reply_text=[]
+                        reply_text.append("占卜問題: "+user_question+"\n占卜結果: " +         "\n            " + cardList[0] + "\n" + cardList[4] +\
+                        "          " + cardList[5] + "\n            " + cardList[6] + "\n" + cardList[2] +\
+                        "          " + cardList[1] + "\n            " + cardList[3] + "\n\n全局暗示: "+ cardList[7])
+                        
+                        reply_text.append(response.choices[0].message.content.strip()) #= response.choices[0].message.content.strip()
+                        if isinstance(reply_text, list):
+                            print_reply_text = ", ".join(reply_text)
+                        print("\nOutput: "+print_reply_text)
+
+                        #     mesText = "占卜結果: " +         "\n            " + cardList[0] + "\n" + cardList[4] +\
+                        # "          " + cardList[5] + "\n            " + cardList[6] + "\n" + cardList[2] +\
+                        # "          " + cardList[1] + "\n            " + cardList[3] + "\n\n全局暗示: "+ cardList[7]
+                    return reply_text
         return reply_text
 
 
@@ -1262,7 +1387,7 @@ def handle_message(event):
         return 0
 
 
-    if event.message.text =="抽牌" or event.message.text =="抽大牌" or event.message.text =="六芒星":
+    if event.message.text =="抽牌" or event.message.text =="抽大牌" or event.message.text =="//六芒星":
                         
         turn = [
             "正位",
@@ -1318,7 +1443,7 @@ def handle_message(event):
             "國王"
         ]
 
-        if event.message.text =="六芒星" or event.message.text == "#2":
+        if event.message.text =="//六芒星" or event.message.text == "#2":
             cardList = []
             for item in range(0,8,1):
                 ifNum = random.randint(0, 78-1)
@@ -2297,7 +2422,10 @@ def handle_message(event):
             group_name = get_group_name(group_id, line_bot_api)
             # group_name = "XXX"
             print(group_name)
+
+
             # 處理群組消息
+
             # 檢查 Groups 表中是否存在該群組，如果不存在，則新增
             group_response = supabase.table("groups").upsert({
                 "groupid": group_id,
@@ -2334,15 +2462,23 @@ def handle_message(event):
             if not message_text.endswith('/'):
                 reply_text = aiPrompt(group_id, user_id, user_name)
             if reply_text:
-                
                 # 將 AI 的回覆作為消息插入到 Messages 表中
-                ai_message_response = supabase.table("messages").insert({
-                    "messageid": str(uuid.uuid4()),
-                    "sessionid": group_id,
-                    "userid": user_id,
-                    "content": reply_text,
-                    "direction": "outbound"
-                }, returning="minimal").execute()
+                if isinstance(reply_text, list):
+                    ai_message_response = supabase.table("messages").insert({
+                        "messageid": str(uuid.uuid4()),
+                        "sessionid": group_id,
+                        "userid": user_id,
+                        "content": reply_text[1],
+                        "direction": "outbound"
+                    }, returning="minimal").execute()
+                else:
+                    ai_message_response = supabase.table("messages").insert({
+                        "messageid": str(uuid.uuid4()),
+                        "sessionid": group_id,
+                        "userid": user_id,
+                        "content": reply_text,
+                        "direction": "outbound"
+                    }, returning="minimal").execute()
 
                 # 使用 Line Bot API 將 GPT 的回覆發送給用戶
                 sendNormalText(event, reply_text)
@@ -2353,6 +2489,7 @@ def handle_message(event):
 
             # 此處可添加使用 GPT 生成回覆並回覆到群組的邏輯
         else:
+            
             # 處理個人消息
 
             # if response.error:
@@ -2440,18 +2577,30 @@ def handle_message(event):
             # )
             
             reply_text = None
-            if not message_text.endswith('/'):
+            if message_text.endswith('/'):
+                pass
+            elif user_id == "U05893ab5a753814f29b5feb91046050e": #user_id in 黑名單
+                pass
+            else:
                 reply_text = aiPrompt(new_session_id, user_id, user_name)
             if reply_text:
-                
                 # 將 AI 的回覆作為消息插入到 Messages 表中
-                ai_message_response = supabase.table("messages").insert({
-                    "messageid": str(uuid.uuid4()),
-                    "sessionid": new_session_id,
-                    "userid": user_id,
-                    "content": reply_text,
-                    "direction": "outbound"
-                }, returning="minimal").execute()
+                if isinstance(reply_text, list):
+                    ai_message_response = supabase.table("messages").insert({
+                        "messageid": str(uuid.uuid4()),
+                        "sessionid": new_session_id,
+                        "userid": user_id,
+                        "content": reply_text[1],
+                        "direction": "outbound"
+                    }, returning="minimal").execute()
+                else:
+                    ai_message_response = supabase.table("messages").insert({
+                        "messageid": str(uuid.uuid4()),
+                        "sessionid": new_session_id,
+                        "userid": user_id,
+                        "content": reply_text,
+                        "direction": "outbound"
+                    }, returning="minimal").execute()
 
                 # if ai_message_response.error:
                 #     print(f"Error inserting AI message into Messages table: {ai_message_response.error.message}")
