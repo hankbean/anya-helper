@@ -421,7 +421,7 @@ def panx():
 #     gss_scopes = ['https://spreadsheets.google.com/feeds']#連線
 #     credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
 #     gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
-#     spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
+#     spreadsheet_key = '' #建立工作表1
 #     return gss_client.open_by_key(spreadsheet_key).sheet1
 
 
@@ -536,7 +536,8 @@ def aiPrompt(session_id, user_id, user_name):
         if reply_text.startswith("#silent#"):
         # if "#silent#" in reply_text:
             return None
-        if "\n" in reply_text:
+        # if "\n" in reply_text:
+        if 1:
             lines = reply_text.split("\n")
             for line in lines:        
                 if line.startswith("#tarot#"):
@@ -799,7 +800,7 @@ def handle_message(event):
     credentials = ServiceAccountCredentials.from_json_keyfile_name(auth_json_path,gss_scopes)
     gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
     #可切割做不同資料表
-    spreadsheet_key = '1OAnZINtomnLuh89heNoRZJ94wzaShbQd-1mlEKhbl3c' #建立工作表1
+    spreadsheet_key = '' #建立工作表1
     sheet = gss_client.open_by_key(spreadsheet_key)
 
     # 搜尋用戶 如果無此用戶 則註冊
@@ -2579,7 +2580,7 @@ def handle_message(event):
             reply_text = None
             if message_text.endswith('/'):
                 pass
-            elif user_id == "U05893ab5a753814f29b5feb91046050e": #user_id in 黑名單
+            elif user_id == "U05893ab5a753814f29b5feb91046050e" or user_id == "U57d8a8e7bbc2aa06b53821a1693dd46d" or user_id == "": #user_id in 黑名單
                 pass
             else:
                 reply_text = aiPrompt(new_session_id, user_id, user_name)
@@ -2619,7 +2620,6 @@ def handle_message(event):
 
 
     return 0
-
 
 
 
