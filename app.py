@@ -8,6 +8,8 @@ from flask import Flask, request, abort
 
 from imgurpython import ImgurClient
 
+import time
+
 import pyimgur
 
 #line bot v2
@@ -152,7 +154,7 @@ def callback():
     return 'ok'
 
 
-def pattern_mega(text):
+""" def pattern_mega(text):
     patterns = [
         'mega', 'mg', 'mu', 'ＭＥＧＡ', 'ＭＥ', 'ＭＵ',
         'ｍｅ', 'ｍｕ', 'ｍｅｇａ', 'GD', 'MG', 'google',
@@ -196,7 +198,7 @@ def apple_news():
         else:
             link = head + data['href']
         content += '{}\n\n'.format(link)
-    return content
+    return content """
 
 
 def get_page_number(content):
@@ -209,44 +211,82 @@ def get_page_number(content):
 def craw_page(res, push_rate):
     soup_ = BeautifulSoup(res.text, 'html.parser')
     article_seq = []
-    for r_ent in soup_.select('div.row2'):
+    for article_div in soup_.select('#list div.row'):
+    # for r_ent in soup_.select('div.row2'):
         try:
             # 先得到每篇文章的篇url
-            link = r_ent.find_all('a')[1]['href']
-            if link:
-                # 確定得到url再去抓 標題 以及 推文數
-                title = r_ent.find(class_="titleColor").text #.strip()
-                # print(title)
-                url = 'https://disp.cc/b/' + link
-                try:
-                    if r_ent.find(class_="L9").find(class_="fgG1"):
-                        rate = r_ent.find(class_="L9").find(class_="fgG1").text
-                    if r_ent.find(class_="L9").find(class_="fgY1"):
-                        rate = r_ent.find(class_="L9").find(class_="fgY1").text
-                    # print(rate)
-                    # print("********")
-                    # rate = int(rate)
-                    # print(rate)
-                    if rate:
-                        rate = 100 if rate.startswith('爆') else rate
-                        rate = -1 * int(rate[1]) if rate.startswith('X') else rate
-                    else:
-                        rate = 0
-                except Exception as e:
-                    rate = 0
-                    print('無推顯示', e)
-                # print(rate)
-                # 比對推文數
-                if int(rate) >= push_rate:
+            title_tag = article_div.select_one('.listTitle a')
+            # link = r_ent.find_all('a')[1]['href']
+            if not title_tag:
+                continue
+            # 確定得到url再去抓 標題 以及 推文數
+            # title = r_ent.find(class_="titleColor").text #.strip()
+            title = title_tag.text.strip()
+            # print(title)
+            # url = 'https://disp.cc/b/' + link
+            url = 'https://disp.cc' + title_tag['href']
+            # 【修正 3】大幅簡化推文數 (rate) 的處理邏輯
+            rate = 0 # 先給定預設值
+            # 累積人氣的資訊在 class="R0" 下方的 span 標籤裡
+            popularity_tag = article_div.select_one('.R0 span')
+            
+            if popularity_tag and 'title' in popularity_tag.attrs:
+                # 取得 title 屬性的內容，例如 "累積人氣: 3937"
+                title_attr = popularity_tag['title']
+                
+                # 從字串中分割並提取數字部分
+                # "累積人氣: 3937" -> ["累積人氣", " 3937"] -> " 3937"
+                num_str = title_attr.split(':')[1].strip()
+                
+                if num_str.isdigit():
+                    rate = int(num_str)
+            # push_span = article_div.select_one('span.L9')
+            # if push_span and push_span.text.strip():
+            #     # 確保文字是數字再進行轉換
+            #     rate_text = push_span.text.strip()
+            #     if rate_text.isdigit():
+            #         rate = int(rate_text)
+                # 進行推文數比對
+                if rate >= push_rate:
                     article_seq.append({
                         'title': title,
                         'url': url,
                         'rate': rate,
                     })
-                # print(article_seq)
         except Exception as e:
-            # print('crawPage function error:',r_ent.find(class_="title").text.strip())
-            print('本文已被刪除', e)
+            # 如果在處理單一文章時發生任何預期外的錯誤，印出訊息並繼續處理下一篇
+            print(f"解析文章時發生錯誤: {e}")
+            continue
+        #     try:
+        #         if r_ent.find(class_="L9").find(class_="fgG1"):
+        #             rate = r_ent.find(class_="L9").find(class_="fgG1").text
+        #         if r_ent.find(class_="L9").find(class_="fgY1"):
+        #             rate = r_ent.find(class_="L9").find(class_="fgY1").text
+        #         # print(rate)
+        #         # print("********")
+        #         # rate = int(rate)
+        #         # print(rate)
+        #         if rate:
+        #             rate = 100 if rate.startswith('爆') else rate
+        #             rate = -1 * int(rate[1]) if rate.startswith('X') else rate
+        #         else:
+        #             rate = 0
+        #     except Exception as e:
+        #         rate = 0
+        #         print('無推顯示', e)
+        #     # print(rate)
+        #     # 比對推文數
+        #     if int(rate) >= push_rate:
+        #         article_seq.append({
+        #             'title': title,
+        #             'url': url,
+        #             'rate': rate,
+        #         })
+        #     # print(article_seq)
+        # except Exception as e:
+        #     # print('crawPage function error:',r_ent.find(class_="title").text.strip())
+        #     print('本文已被刪除', e)
+        
     return article_seq
 
 
@@ -314,14 +354,54 @@ def ptt_gossiping():
 
 def ptt_beauty():
     rs = requests.session()
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
+    }
+    rs.headers.update(headers)
     res = rs.get('https://disp.cc/b/Beauty', verify=False)
+
+
+    # # 使用 BeautifulSoup 解析 HTML
+    # soup = BeautifulSoup(res.text, 'html.parser')
+
+    # # 準備一個列表來存放所有文章的資訊
+    # articles = []
+    # base_url = "https://disp.cc" # 網站的基礎網址，用來組合完整的文章連結
+
+    # # 找到所有文章的區塊，Selector '#list .row' 意思是找ID為'list'的元素裡，所有class為'row'的子元素
+    # for row in soup.select('#list .row'):
+    
+    #     # --- 提取推文數 (Push) ---
+    #     push_tag = row.select_one('.L9 span.fgG1') # .select_one() 只找第一個符合的
+    #     # 如果找不到 (代表沒人推)，就給預設值 '0'
+    #     push_count = push_tag.get_text(strip=True) if push_tag else '0'
+
+    #     # --- 提取標題 (Title) 和連結 (URL) ---
+    #     title_tag = row.select_one('.listTitle a')
+    #     # 防呆處理：如果找不到標題標籤就跳過這一筆
+    #     if not title_tag:
+    #         continue
+    
+    #     title = title_tag.get_text(strip=True)
+    #     # 連結是相對路徑，需要跟 base_url 組合
+    #     relative_url = title_tag['href']
+    #     url = base_url + relative_url
+        
+    #     # 將提取到的資訊存成一個字典
+    #     articles.append({
+    #         'push': push_count,
+    #         'title': title,
+    #         'url': url,
+    #     })
+
+
     soup = BeautifulSoup(res.text, 'html.parser')
     all_page_url = soup.select('div.topRight a')[4]['href']
     # print("b\n" + all_page_url)
     start_page = get_page_number(all_page_url)
     # print(start_page)
     page_term = 500  # crawler count
-    push_rate = 8  # 推文
+    push_rate = 4000  # 推文
     index_list = []
     article_list = []
     for page in range(start_page, start_page - page_term, -20):
@@ -342,16 +422,26 @@ def ptt_beauty():
             article_list += craw_page(res, push_rate)
             # print u'OK_URL:', index
             # time.sleep(0.05)
+        time.sleep(0.1)
         # print(article_list)
     content = ''
     for article in article_list:
         data = '[{} push] {}\n{}\n\n'.format(article.get('rate', None), article.get('title', None),
-                                             article.get('url', None))
+                                            article.get('url', None))
         content += data
+    if not content:
+        content = "找不到符合條件的內容。"
+
+    # content = ''
+    # for article in articles:
+    #     if article.get('push', None)>5:
+    #         data = '[{} push] {}\n{}\n\n'.format(article.get('push', None), article.get('title', None),
+    #                                          article.get('url', None))
+    #         content += data
     return content
 
 
-def ptt_hot():
+""" def ptt_hot():
     target_url = 'http://disp.cc/b/PttHot'
     print('Start parsing pttHot....')
     rs = requests.session()
@@ -413,7 +503,7 @@ def panx():
         title = data.text
         link = data['href']
         content += '{}\n{}\n\n'.format(title, link)
-    return content
+    return content """
 
 # def sheet(self):
 #     #連接sheet
@@ -438,28 +528,46 @@ def get_group_name(groupId, line_bot_api):
         return '請求失敗，錯誤碼: ' + str(response.status_code) + str(response.content)
     
 def sendNormalText(event, textContent):
+    limit = 5000
+    if len(textContent) > limit:
+        # 截斷字串，留一些空間加上提示訊息
+        textContent = textContent[:limit - 50] + "\n... (因內容過長，已省略部分)"
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         if isinstance(textContent, list):
             messages = [TextMessage(text=text) for text in textContent]
         else:
             messages = [TextMessage(text=textContent)]
-        line_bot_api.reply_message_with_http_info(
+        lineMessage = line_bot_api.reply_message_with_http_info(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=messages#[TextMessage(text=textContent)]#
             )
         )
+        print(event,"\n",lineMessage)
+    return lineMessage
+
+def sendImageMessage(event, oriUrl, preUrl):
+    with ApiClient(configuration) as api_client:
+        line_bot_api = MessagingApi(api_client)
+        messages = [ImageMessage(original_content_url=oriUrl,
+        preview_image_url=preUrl)]
+        line_bot_api.reply_message_with_http_info(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=messages
+            )
+        )
 
 # line_bot_api.reply_message(event.reply_token, [TextMessage(
-#             # text='歡迎進入1A2B遊戲模式，請試著讓我高潮吧❤(如想離開請跟我說[!離開])'
+#             # text='歡迎進入1A2B遊戲模式，請試著讓我高興吧❤(如想離開請跟我說[!離開])'
 #             text=messageTheme[themeNow]['1A2B2']),
 #             TextMessage(text='(如想離開請跟我說"!離開")'),
 #             TextMessage(text="(lag超過5秒就是訊息被吃掉了)")
 #         ])
 
 def aiPrompt(session_id, user_id, user_name):
-
+    #要修改掉這個部分
     if session_id == "C87909cf6d7965192e2aa050bc4df5d8b":
         return None
 
@@ -1094,23 +1202,22 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text=content))
         return 0
-    # if event.message.text == "妹":
+    if event.message.text == "妹/":
         content = ptt_beauty()
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=content))
+        sendNormalText(event, content)
         return 0
-    # if event.message.text == "抽正妹":
+    if event.message.text == "抽正妹/":
         client = ImgurClient(client_id, client_secret)
         images = client.get_album_images(album_id)
         index = random.randint(0, len(images) - 1)
         url = images[index].link
-        image_message = ImageSendMessage(
-            original_content_url=url,
-            preview_image_url=url
-        )
-        line_bot_api.reply_message(
-            event.reply_token, image_message)
+        sendImageMessage(event, url, url)
+        # image_message = ImageSendMessage(
+        #     original_content_url=url,
+        #     preview_image_url=url
+        # )
+        # line_bot_api.reply_message(
+        #     event.reply_token, image_message)
         return 0
     # if event.message.text == "抽":
         # im = pyimgur.Imgur(client_id, client_secret)
@@ -1803,7 +1910,7 @@ def handle_message(event):
 
     # 以下用檔案儲存
 
-    if event.message.text == "作者":
+    """ if event.message.text == "作者":
         textContent="本機器人由 『豆神教文大總部部長兼教主』 豆豆製作"
         # line_bot_api.reply_message(
         #     event.reply_token,
@@ -1816,7 +1923,7 @@ def handle_message(event):
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text=verAnswer))
-        return 0
+        return 0 """
 
     if event.message.text == "#傳話":
         #玫瑰傳情 匿名傳話
@@ -2057,7 +2164,7 @@ def handle_message(event):
         )   
         conn.commit()
         line_bot_api.reply_message(event.reply_token, [TextMessage(
-            # text='歡迎進入1A2B遊戲模式，請試著讓我高潮吧❤(如想離開請跟我說[!離開])'
+            # text='歡迎進入1A2B遊戲模式，請試著讓我高興吧❤(如想離開請跟我說[!離開])'
             text=messageTheme[themeNow]['1A2B2']),
             TextMessage(text='(如想離開請跟我說"!離開")'),
             TextMessage(text="(lag超過5秒就是訊息被吃掉了)")
@@ -2231,8 +2338,8 @@ def handle_message(event):
         # print(user_dict[user_ID][4])
 
         if (a == 4):
-            message += [TextSendMessage(text= "%dA%dB\n啊啊啊要去了！" % (a, b)), 
-                       TextSendMessage(text= "你讓我高潮了❤️"),
+            message += [TextSendMessage(text= "%dA%dB\n真厲害！" % (a, b)), 
+                       TextSendMessage(text= "你讓我太高興了❤️"),
                        TextSendMessage(text= "總共猜了%d次" % user_dict[user_ID][4])]
             # sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][4])
             # sheet.worksheet('用戶').update_cell(userRowNum, 4, user_dict[user_ID][5])
@@ -2240,7 +2347,7 @@ def handle_message(event):
             line_bot_api.reply_message(event.reply_token, message)
         else:
             message += [TextSendMessage(text= "%d A %d B" % (a, b)), 
-                       TextSendMessage(text= "再用力一點❤️(%d" % (user_dict[user_ID][4]))]
+                       TextSendMessage(text= "再盡力一點❤️(%d" % (user_dict[user_ID][4]))]
                     #    TextSendMessage(text= "猜了%d次" % (user_dict[user_ID][4]))]
             line_bot_api.reply_message(event.reply_token, message)
         print(user_dict)
