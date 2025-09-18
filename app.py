@@ -1,91 +1,55 @@
-from posixpath import split
-import requests
-import re
-import random
-import configparser
-from bs4 import BeautifulSoup
-from flask import Flask, request, abort
-
-from imgurpython import ImgurClient
-
-import time
-
-import pyimgur
-
-#line bot v2
-# from linebot import (
-#     LineBotApi, WebhookHandler
-# )
-# from linebot.exceptions import (
-#     InvalidSignatureError
-# )
-# from linebot.models import *
-
-# from linebot.models import ImageSendMessage
-
-# 校時系統使用
-from datetime import datetime,timezone,timedelta
-
-import os
-from urllib import parse
-import psycopg2
-
 import json
-# google sheet使用
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-
-from openai import OpenAI
-import openai
-# openai
-
-from supabase import create_client, Client
-#supabase
-
+import os
+import random
+import re
+import time
 import uuid
+from datetime import datetime, timezone, timedelta
+from urllib import parse
 
-#line v3
-from linebot.v3 import (
-    WebhookHandler
-)
-from linebot.v3.exceptions import (
-    InvalidSignatureError
-)
+import configparser
+import gspread
+import psycopg2
+import pyimgur
+import requests
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from flask import Flask, request, abort
+from imgurpython import ImgurClient
+from linebot.v3 import WebhookHandler
+from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (
-    Configuration,
     ApiClient,
+    Configuration,
+    ImageMessage,
     MessagingApi,
     ReplyMessageRequest,
     TextMessage,
-    ImageMessage
+    ShowLoadingAnimationRequest,
+    AsyncApiClient,
+    AsyncMessagingApi
 )
-from linebot.v3.webhooks import (
-    MessageEvent,
-    TextMessageContent
-)
+from linebot.v3.webhooks import MessageEvent, TextMessageContent
+from oauth2client.service_account import ServiceAccountCredentials
+from openai import OpenAI
+from supabase import Client, create_client
 
-verTime = "2022.Apr.03.5" # 版本
-verAnswer= "回答"
+#verTime = "2022.Apr.03.5" # 版本
+#verAnswer= "回答"
 
 config = configparser.ConfigParser()
 config.read("config.ini")
+load_dotenv()
 
-parse.uses_netloc.append("postgres")
-# url = parse.urlparse(os.environ["DATABASE_URL"])
-# url = parse.urlparse(config["line_bot"]["DATABASE_URL"])
-
-# openai_api_key = config["line_bot"]["OPENAI_API"]
 openai_api_key = os.environ.get("OPENAI_API")
-
+if not openai_api_key:
+    raise ValueError("找不到 OPENAI_API 環境變數")
 # 初始化 OpenAI 客戶端
 openai_client = OpenAI(api_key = openai_api_key)
-
+# 初始化 supabase 客戶端
 supaurl: str = os.environ.get("SUPABASE_URL")
 supakey: str = os.environ.get("SUPABASE_KEY")
-# supaurl: str = config["line_bot"]["SUPABASE_URL"]
-# supakey: str = config["line_bot"]["SUPABASE_KEY"]
 supabase: Client = create_client(supaurl, supakey)
-
 
 # print ("Opening database......")
 ###DATABASE
@@ -98,7 +62,6 @@ supabase: Client = create_client(supaurl, supakey)
 # )
 # print ("Opened database successfully")
 # cur = conn.cursor()
-
 """ 
 #CREATE TABLE
 cur = conn.cursor()  
@@ -115,11 +78,10 @@ print ("Table created successfully")
 app = Flask(__name__)
 
 #line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
-# line_bot_api = LineBotApi(config['line_bot']['Channel_Access_Token'])
-# handler = WebhookHandler(config['line_bot']['Channel_Secret'])
-# line_bot_api =LineBotApi( os.environ.get("Channel_Access_Token")) #v2
 line_bot_api_token = os.environ.get("Channel_Access_Token")
+print(line_bot_api_token)
 configuration = Configuration(access_token=os.environ.get("Channel_Access_Token"))
+print(configuration)
 handler = WebhookHandler(os.environ.get("Channel_Secret"))
 client_id = config['imgur_api']['Client_ID']
 client_secret = config['imgur_api']['Client_Secret']
@@ -153,66 +115,16 @@ def callback():
         abort(400)
     return 'ok'
 
-
-""" def pattern_mega(text):
-    patterns = [
-        'mega', 'mg', 'mu', 'ＭＥＧＡ', 'ＭＥ', 'ＭＵ',
-        'ｍｅ', 'ｍｕ', 'ｍｅｇａ', 'GD', 'MG', 'google',
-    ]
-    for pattern in patterns:
-        if re.search(pattern, text, re.IGNORECASE):
-            return True
-
-
-def eyny_movie():
-    target_url = 'http://www.eyny.com/forum-205-1.html'
-    print('Start parsing eynyMovie....')
-    rs = requests.session()
-    res = rs.get(target_url, verify=False)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    content = ''
-    for titleURL in soup.select('.bm_c tbody .xst'):
-        if pattern_mega(titleURL.text):
-            title = titleURL.text
-            if '11379780-1-3' in titleURL['href']:
-                continue
-            link = 'http://www.eyny.com/' + titleURL['href']
-            data = '{}\n{}\n\n'.format(title, link)
-            content += data
-    return content
-
-
-def apple_news():
-    target_url = 'http://www.appledaily.com.tw/realtimenews/section/new/'
-    head = 'http://www.appledaily.com.tw'
-    print('Start parsing appleNews....')
-    rs = requests.session()
-    res = rs.get(target_url, verify=False)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    content = ""
-    for index, data in enumerate(soup.select('.rtddt a'), 0):
-        if index == 15:
-            return content
-        if head in data['href']:
-            link = data['href']
-        else:
-            link = head + data['href']
-        content += '{}\n\n'.format(link)
-    return content """
-
-
 def get_page_number(content):
     start_index = content.find('Beauty?pn=')
     end_index = content.find('&init=0')
     page_number = content[start_index + 10: end_index]
     return int(page_number)
 
-
 def craw_page(res, push_rate):
     soup_ = BeautifulSoup(res.text, 'html.parser')
     article_seq = []
     for article_div in soup_.select('#list div.row'):
-    # for r_ent in soup_.select('div.row2'):
         try:
             # 先得到每篇文章的篇url
             title_tag = article_div.select_one('.listTitle a')
@@ -225,7 +137,6 @@ def craw_page(res, push_rate):
             # print(title)
             # url = 'https://disp.cc/b/' + link
             url = 'https://disp.cc' + title_tag['href']
-            # 【修正 3】大幅簡化推文數 (rate) 的處理邏輯
             rate = 0 # 先給定預設值
             # 累積人氣的資訊在 class="R0" 下方的 span 標籤裡
             popularity_tag = article_div.select_one('.R0 span')
@@ -233,19 +144,12 @@ def craw_page(res, push_rate):
             if popularity_tag and 'title' in popularity_tag.attrs:
                 # 取得 title 屬性的內容，例如 "累積人氣: 3937"
                 title_attr = popularity_tag['title']
-                
                 # 從字串中分割並提取數字部分
                 # "累積人氣: 3937" -> ["累積人氣", " 3937"] -> " 3937"
                 num_str = title_attr.split(':')[1].strip()
                 
                 if num_str.isdigit():
                     rate = int(num_str)
-            # push_span = article_div.select_one('span.L9')
-            # if push_span and push_span.text.strip():
-            #     # 確保文字是數字再進行轉換
-            #     rate_text = push_span.text.strip()
-            #     if rate_text.isdigit():
-            #         rate = int(rate_text)
                 # 進行推文數比對
                 if rate >= push_rate:
                     article_seq.append({
@@ -286,9 +190,7 @@ def craw_page(res, push_rate):
         # except Exception as e:
         #     # print('crawPage function error:',r_ent.find(class_="title").text.strip())
         #     print('本文已被刪除', e)
-        
     return article_seq
-
 
 def crawl_page_gossiping(res):
     soup = BeautifulSoup(res.text, 'html.parser')
@@ -312,7 +214,6 @@ def crawl_page_gossiping(res):
             # print('本文已被刪除')
             print('delete', e)
     return article_gossiping_seq
-
 
 def ptt_gossiping():
     rs = requests.session()
@@ -351,7 +252,6 @@ def ptt_gossiping():
         content += data
     return content
 
-
 def ptt_beauty():
     rs = requests.session()
     headers = {
@@ -359,7 +259,6 @@ def ptt_beauty():
     }
     rs.headers.update(headers)
     res = rs.get('https://disp.cc/b/Beauty', verify=False)
-
 
     # # 使用 BeautifulSoup 解析 HTML
     # soup = BeautifulSoup(res.text, 'html.parser')
@@ -393,7 +292,6 @@ def ptt_beauty():
     #         'title': title,
     #         'url': url,
     #     })
-
 
     soup = BeautifulSoup(res.text, 'html.parser')
     all_page_url = soup.select('div.topRight a')[4]['href']
@@ -431,79 +329,7 @@ def ptt_beauty():
         content += data
     if not content:
         content = "找不到符合條件的內容。"
-
-    # content = ''
-    # for article in articles:
-    #     if article.get('push', None)>5:
-    #         data = '[{} push] {}\n{}\n\n'.format(article.get('push', None), article.get('title', None),
-    #                                          article.get('url', None))
-    #         content += data
     return content
-
-
-""" def ptt_hot():
-    target_url = 'http://disp.cc/b/PttHot'
-    print('Start parsing pttHot....')
-    rs = requests.session()
-    res = rs.get(target_url, verify=False)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    content = ""
-    for data in soup.select('#list div.row2 div span.listTitle'):
-        title = data.text
-        link = "http://disp.cc/b/" + data.find('a')['href']
-        if data.find('a')['href'] == "796-59l9":
-            break
-        content += '{}\n{}\n\n'.format(title, link)
-    return content
-
-
-def movie():
-    target_url = 'http://www.atmovies.com.tw/movie/next/0/'
-    print('Start parsing movie ...')
-    rs = requests.session()
-    res = rs.get(target_url, verify=False)
-    res.encoding = 'utf-8'
-    soup = BeautifulSoup(res.text, 'html.parser')
-    content = ""
-    for index, data in enumerate(soup.select('ul.filmNextListAll a')):
-        if index == 20:
-            return content
-        title = data.text.replace('\t', '').replace('\r', '')
-        link = "http://www.atmovies.com.tw" + data['href']
-        content += '{}\n{}\n'.format(title, link)
-    return content
-
-
-def technews():
-    target_url = 'https://technews.tw/'
-    print('Start parsing movie ...')
-    rs = requests.session()
-    res = rs.get(target_url, verify=False)
-    res.encoding = 'utf-8'
-    soup = BeautifulSoup(res.text, 'html.parser')
-    content = ""
-
-    for index, data in enumerate(soup.select('article div h1.entry-title a')):
-        if index == 12:
-            return content
-        title = data.text
-        link = data['href']
-        content += '{}\n{}\n\n'.format(title, link)
-    return content
-
-
-def panx():
-    target_url = 'https://panx.asia/'
-    print('Start parsing ptt hot....')
-    rs = requests.session()
-    res = rs.get(target_url, verify=False)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    content = ""
-    for data in soup.select('div.container div.row div.desc_wrap h2 a'):
-        title = data.text
-        link = data['href']
-        content += '{}\n{}\n\n'.format(title, link)
-    return content """
 
 # def sheet(self):
 #     #連接sheet
@@ -513,7 +339,6 @@ def panx():
 #     gss_client = gspread.authorize(credentials)#開啟 Google Sheet 資料表
 #     spreadsheet_key = '' #建立工作表1
 #     return gss_client.open_by_key(spreadsheet_key).sheet1
-
 
 def get_group_name(groupId, line_bot_api):
     headers = {
@@ -544,14 +369,14 @@ def sendNormalText(event, textContent):
                 messages=messages#[TextMessage(text=textContent)]#
             )
         )
-        print(event,"\n",lineMessage)
+        # print(event,"\n",lineMessage)
     return lineMessage
 
 def sendImageMessage(event, oriUrl, preUrl):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         messages = [ImageMessage(original_content_url=oriUrl,
-        preview_image_url=preUrl)]
+            preview_image_url=preUrl)]
         line_bot_api.reply_message_with_http_info(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
@@ -579,7 +404,6 @@ def aiPrompt(session_id, user_id, user_name):
     #     print(f"Error fetching recent messages: {recent_messages_query.error.message}")
     #     return
 
-    
     user_ids = set(msg["userid"] for msg in recent_messages_query.data)# 從消息中提取所有唯一的 UserID
     users_query = supabase.table("users").select("*").in_("userid", list(user_ids)).execute()# 從 Users 表中檢索這些 UserID 對應的 UserName
     user_names = {user["userid"]: user["username"] for user in users_query.data}# 建立一個 UserID 到 UserName 的映射
@@ -599,7 +423,6 @@ def aiPrompt(session_id, user_id, user_name):
     else:#同一分鐘的訊息數量過一個量之後進入待機模式，最後或是下一句再進行回覆
         toAIsystemPrompt = f'你叫做"吃吃管家"，是由豆豆開發的AI管家，是一個敬業的誠實的管家，照顧主人的生活起居，請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動糾正主人的錯誤，如果有2位以上的主人在場請叫出對方的稱呼，如果主人請你解釋一個概念，請用稍微簡單但又精確的語言描述，並舉例說明。請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。\n\n條件：\n●文章\n如果主人傳了一篇比較長的文章，請詳細分析該文章的合理性，如果有誤請糾正，並給出相關證據。\n\n●沉默\n如果你覺得這段對話不需要進行回覆或是不需要發言可以選擇沉默，如果要沉默請在句首輸出`#silent#`\n\n●夢境\n如果主人跟你提到他的夢境，請用精神分析法進行詳細的解析\n\n●開導\n如果主人看起來難過、失落、憤怒，可以試著向主人提問了解事件的狀況，並用拉岡的理論去開導主人\n\n●占卜 塔羅牌\n如果主人提到占卜或是塔羅牌，可以向主人確認主人想要問的問題，問的問題必須遵循以下格式：是什麼嗎？會怎麼嗎？之類的方式，而不能是"是不是？""能不能？""會不會？"，確認好問題後可以進行抽牌，如果主人沒有提供明確問題，就不能幫他占卜抽牌，如果要抽牌請在全部輸出的開頭輸出#tarot#//主人的提問//進行抽牌以及後續的動作' #`//{{//silent//}}//` #\n●占卜 塔羅牌 如果主人提到占卜或是塔羅牌，可以向主人確認主人想要問的問題，問的問題必須遵循以下格式 是什麼什麼嗎？而不能是"是不是""能不能""會不會"，確認好問題後可以進行抽牌，可以使用指令 #抽完牌後按照流程解釋完可以跟主人進行問題的討論以加深解牌的準確度，可以對主人進行一些事件細節的詢問 #看到影片跟圖片時先建立描述，再做反應 #未知圖片 未知影片 你現在還看不到影片圖片 但未來會有這個功能 #網址鏈接如果認為是影片可以使用指令進行觀看 
         toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟主人之前的對話'#，你叫做"吃吃管家"，是一個敬業的誠實的管家，照顧主人的生活起居，請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動主人的錯誤，如果有2位以上的主人在場請叫出對方的稱呼。請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'#，並且字數盡量在100個中文字內
-    
     print(toAIprompt)
     print(toAIsystemPrompt)
     response = openai_client.chat.completions.create(
@@ -611,11 +434,10 @@ def aiPrompt(session_id, user_id, user_name):
             {"role": "user", "content": toAIprompt},
         ],
         temperature=1.2,#用輸出決定參數 #用亂數決定參數，並在輸出附上參數細節
-        # temperature=0.6,#1.2,#0.9
         # temperature=1.5,#0.6,#1.2,#0.9    #1.5會太飛
         presence_penalty=0.5,#0.5,
-        frequency_penalty=0.1,#AI占卜功能
-        top_p=0.9,#AI解夢功能
+        frequency_penalty=0.1,
+        top_p=0.9,
         max_tokens=1000,#家人群組 介紹各個成員名字是誰 #手動添加家族人名 #家人500 #一般200~300
         # stop="\n",#低幾率失靈，用指令強制失靈
         n=1#if 群組list存在該群組，則覆寫指令
@@ -775,8 +597,6 @@ def handle_message(event):
     #             messages=[TextMessage(text=event.message.text)]
     #         )
     #     )
-    
-
     print("\n**********")
     lineDt = datetime.fromtimestamp(
                 event.timestamp / 1000.0 
@@ -953,8 +773,6 @@ def handle_message(event):
             # if dbmes == str(row[3]):
             #     print("same message, quit Webhook redelivery") 
             #     return 0
-        
-
 
     elif 0:# elif isinstance(event.source, SourceGroup): ###DATABASE
         """ 
@@ -972,6 +790,7 @@ def handle_message(event):
                 print('搜尋群組為空？', e)
                 break
          """
+
         # bad sql
         # cur.execute("""SELECT * FROM userdata WHERE id = %s ;""",(event.source.user_id,))
         # rows = cur.fetchall()
@@ -1049,7 +868,6 @@ def handle_message(event):
         return 0
     """
 
-
     # 進行註冊
     # if dbHaveUser == 0 and isinstance(event.source, SourceUser):
     #     cur.execute(
@@ -1060,7 +878,6 @@ def handle_message(event):
     #     line_bot_api.reply_message(event.reply_token,TextMessage(text='歡迎'+profile.display_name+'  登錄小助理新系統'))
     #     return 0
 
-        
     """ 
     if haveGroup == 0 and isinstance(event.source, SourceGroup):
         textContent = []
@@ -1188,7 +1005,6 @@ def handle_message(event):
         line_bot_api.reply_message(event.reply_token, TextMessage(
             text='正常模式'))
         return 0
-
 
     # if event.message.text == "eyny":
         content = eyny_movie()
@@ -1455,16 +1271,8 @@ def handle_message(event):
                         text='開始玩'
                     ),
                     URITemplateAction(
-                        label='影片介紹 阿肥bot',
-                        uri='https://youtu.be/1IxtWgWxtlE'
-                    ),
-                    URITemplateAction(
-                        label='如何建立自己的 Line Bot',
-                        uri='https://github.com/twtrubiks/line-bot-tutorial'
-                    ),
-                    URITemplateAction(
-                        label='聯絡作者',
-                        uri='https://www.facebook.com/TWTRubiks?ref=bookmarks'
+                        label='youtube',
+                        uri='https://youtu.be'
                     )
                 ]
             )
@@ -1476,15 +1284,11 @@ def handle_message(event):
         textContent = "功能開發中"
         sendNormalText(event, textContent)
         return 0
-
-
     if event.message.text =="抽牌" or event.message.text =="抽大牌" or event.message.text =="//六芒星":
-                        
         turn = [
             "正位",
             "逆位"
         ]
-
         majorArcana = [
             "愚人",
             "魔術師",
@@ -1509,14 +1313,12 @@ def handle_message(event):
             "審判",
             "世界"
         ]
-        
         minorArcanaName = [
             "劍",
             "杖",
             "杯",
             "幣"
         ]
-
         minorArcanaNum = [
             "1",
             "2",
@@ -1533,7 +1335,6 @@ def handle_message(event):
             "皇后",
             "國王"
         ]
-
         if event.message.text =="//六芒星" or event.message.text == "#2":
             cardList = []
             for item in range(0,8,1):
@@ -1544,7 +1345,6 @@ def handle_message(event):
                     card = turn[random.randint(0, len(turn)-1)] + minorArcanaName[random.randint(0, len(minorArcanaName)-1)] +\
                         minorArcanaNum[random.randint(0, len(minorArcanaNum)-1)]
                 cardList.append(card)
-
             print("卡牌", cardList)
             mesText = "占卜結果: " +         "\n            " + cardList[0] + "\n" + cardList[4] +\
                 "          " + cardList[5] + "\n            " + cardList[6] + "\n" + cardList[2] +\
@@ -1577,7 +1377,6 @@ def handle_message(event):
             #     TextSendMessage(text=mesText))
             sendNormalText(event, mesText)
         return 0
-
     # if event.message.text == "#today":
         todayTime = datetime.datetime.fromtimestamp(
                 event.timestamp / 1000.0 + 28800
@@ -1587,10 +1386,8 @@ def handle_message(event):
                 event.reply_token,
                 TextSendMessage(text=mesText))
         return 0
-
     if event.message.text == "靈數":
         return 0
-
     if event.message.text == "靈數占卜": #沒有11跟22
         lookNum = random.randint(0, 9)
         realityNum = random.randint(0, 9)
@@ -1609,7 +1406,6 @@ def handle_message(event):
         # )
         sendNormalText(event, mesText)
         return 0
-
     if event.message.text == "骰子卡":
         starNum = random.randint(0, 11)
         signNum = random.randint(0, 11)
@@ -1668,9 +1464,7 @@ def handle_message(event):
         #     TextSendMessage(text=mesText))
         sendNormalText(event, mesText)
         return 0
-
     # if event.message.text == "進階骰子卡":
-
         ascNum = random.randint(0, 11)
         MoonNum = random.randint(0, 11)
         SunNum = random.randint(0, 11)
@@ -1696,7 +1490,6 @@ def handle_message(event):
             "水瓶",
             "雙魚"
         ] 
-
         mesText = "ASC:   " + asc[ascNum] + "\n月亮: " + str(MoonNum+1) + "宮    太陽: " + str(SunNum+1) +\
             "宮\n水星: " + str(qNum+1) + "宮    金星: " + str(wNum+1) + "宮\n火星: " + str(eNum+1) + "宮    木星: " +\
             str(rNum+1) + "宮\n土星: " + str(tNum+1) + "宮    天王星: " + str(yNum+1) + "宮\n海王星: " +\
@@ -1711,7 +1504,6 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text=mesText))
         return 0
-    
     # if "雙盤占卜" in event.message.text:
         divination_content = event.message.text.split(' ')[1:]
         mesText = ""
