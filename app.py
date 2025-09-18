@@ -421,10 +421,42 @@ def aiPrompt(session_id, user_id, user_name):
         toAIsystemPrompt = f'請你扮演亞璃子，以下是你的人物設定"亞璃子是一個在末日世界中，由瘋狂科學家{user_name}'
         toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟主人之前的對話'
     else:#同一分鐘的訊息數量過一個量之後進入待機模式，最後或是下一句再進行回覆
-        toAIsystemPrompt = f'你叫做"吃吃管家"，是由豆豆開發的AI管家，是一個敬業的誠實的管家，照顧主人的生活起居，請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動糾正主人的錯誤，如果有2位以上的主人在場請叫出對方的稱呼，如果主人請你解釋一個概念，請用稍微簡單但又精確的語言描述，並舉例說明。請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。\n\n條件：\n●文章\n如果主人傳了一篇比較長的文章，請詳細分析該文章的合理性，如果有誤請糾正，並給出相關證據。\n\n●沉默\n如果你覺得這段對話不需要進行回覆或是不需要發言可以選擇沉默，如果要沉默請在句首輸出`#silent#`\n\n●夢境\n如果主人跟你提到他的夢境，請用精神分析法進行詳細的解析\n\n●開導\n如果主人看起來難過、失落、憤怒，可以試著向主人提問了解事件的狀況，並用拉岡的理論去開導主人\n\n●占卜 塔羅牌\n如果主人提到占卜或是塔羅牌，可以向主人確認主人想要問的問題，問的問題必須遵循以下格式：是什麼嗎？會怎麼嗎？之類的方式，而不能是"是不是？""能不能？""會不會？"，確認好問題後可以進行抽牌，如果主人沒有提供明確問題，就不能幫他占卜抽牌，如果要抽牌請在全部輸出的開頭輸出#tarot#//主人的提問//進行抽牌以及後續的動作' #`//{{//silent//}}//` #\n●占卜 塔羅牌 如果主人提到占卜或是塔羅牌，可以向主人確認主人想要問的問題，問的問題必須遵循以下格式 是什麼什麼嗎？而不能是"是不是""能不能""會不會"，確認好問題後可以進行抽牌，可以使用指令 #抽完牌後按照流程解釋完可以跟主人進行問題的討論以加深解牌的準確度，可以對主人進行一些事件細節的詢問 #看到影片跟圖片時先建立描述，再做反應 #未知圖片 未知影片 你現在還看不到影片圖片 但未來會有這個功能 #網址鏈接如果認為是影片可以使用指令進行觀看 
+        toAIsystemPrompt = f'你叫做"吃吃管家"，是由豆豆開發的AI管家，是一個敬業的誠實的管家，照顧主人的生活起居，'\
+            '請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動糾正主人的錯誤，'\
+            '如果有2位以上的主人在場請叫出對方的稱呼，如果主人請你解釋一個概念，請用稍微簡單但又精確的語言描述，並舉例說明。'\
+            '請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'\
+            '\n\n條件：\n●文章\n如果主人傳了一篇比較長的文章，請詳細分析該文章的合理性，如果有誤請糾正，並給出相關證據。'\
+            '\n\n●沉默\n如果你覺得這段對話不需要進行回覆或是不需要發言可以選擇沉默，如果要沉默請在句首輸出`#silent#`\n\n'\
+            '●夢境\n如果主人跟你提到他的夢境，請用精神分析法進行詳細的解析\n\n●開導\n'\
+            '如果主人看起來難過、失落、憤怒，可以試著向主人提問了解事件的狀況，並根據拉岡以及精神分析的理論去開導主人\n\n'\
+            '●占卜 塔羅牌\n如果主人提到占卜或是塔羅牌，可以向主人確認主人想要問的問題，問的問題必須遵循以下格式'\
+            '"是嗎？""能嗎？""會嗎？""如何？""怎麼樣？"之類的方式，而不能是"是不是？""能不能？""會不會？"以此類推，'\
+            '確認好問題後可以進行抽牌，如果主人沒有提供明確問題，就不能幫他占卜抽牌，'\
+            '如果要抽牌請呼叫draw_tarot_cards工具進行抽牌以及系統會執行後續的動作' 
+            # '如果要抽牌請只輸出"#tarot#//主人的提問//"呼叫工具進行抽牌以及系統會執行後續的動作' 
+        #`//{{//silent//}}//` #\n●占卜 塔羅牌 如果主人提到占卜或是塔羅牌，可以向主人確認主人想要問的問題，問的問題必須遵循以下格式 是什麼什麼嗎？而不能是"是不是""能不能""會不會"，確認好問題後可以進行抽牌，可以使用指令 #抽完牌後按照流程解釋完可以跟主人進行問題的討論以加深解牌的準確度，可以對主人進行一些事件細節的詢問 #看到影片跟圖片時先建立描述，再做反應 #未知圖片 未知影片 你現在還看不到影片圖片 但未來會有這個功能 #網址鏈接如果認為是影片可以使用指令進行觀看 
         toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟主人之前的對話'#，你叫做"吃吃管家"，是一個敬業的誠實的管家，照顧主人的生活起居，請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動主人的錯誤，如果有2位以上的主人在場請叫出對方的稱呼。請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'#，並且字數盡量在100個中文字內
     print(toAIprompt)
     print(toAIsystemPrompt)
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "draw_tarot_cards",
+                "description": "當使用者想要進行塔羅占卜時，確認他們的問題並為他們抽牌。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_question": {
+                            "type": "string",
+                            "description": "使用者想要占卜的具體問題，例如：'我這份工作未來的發展如何？'",
+                        }
+                    },
+                    "required": ["user_question"],
+                },
+            },
+        }
+    ]
     response = openai_client.chat.completions.create(
         model="gpt-4.1-2025-04-14",
         # model="gpt-4o-2024-05-13",
@@ -433,6 +465,8 @@ def aiPrompt(session_id, user_id, user_name):
             {"role": "system", "content": toAIsystemPrompt},
             {"role": "user", "content": toAIprompt},
         ],
+        tools=tools,
+        tool_choice="auto",
         temperature=1.2,#用輸出決定參數 #用亂數決定參數，並在輸出附上參數細節
         # temperature=1.5,#0.6,#1.2,#0.9    #1.5會太飛
         presence_penalty=0.5,#0.5,
@@ -442,122 +476,127 @@ def aiPrompt(session_id, user_id, user_name):
         # stop="\n",#低幾率失靈，用指令強制失靈
         n=1#if 群組list存在該群組，則覆寫指令
     )
-
-    if response and response.choices:
-        reply_text = response.choices[0].message.content.strip()
-        print("\nOutput: "+reply_text)
-        if reply_text.startswith("#silent#"):
-        # if "#silent#" in reply_text:
+    tool_calls = response.choices[0].message.tool_calls
+    print("\nOutput: " + str(response.choices[0].message))
+    #吃吃有權保持沉默
+    if response.choices[0].message.content:
+        if response.choices[0].message.content.strip().startswith("#silent#"):
             return None
-        # if "\n" in reply_text:
-        if 1:
-            lines = reply_text.split("\n")
-            for line in lines:        
-                if line.startswith("#tarot#"):
-                  if "//" not in reply_text:
-                    return "系統提示錯誤：占卜失敗，請重新向吃吃提問"
-                  elif "//" in reply_text:
-                    user_question = reply_text.split("//")[1].strip()
-                    turn = [
-                        "正位",
-                        "逆位"
-                    ]
-                    majorArcana = [
-                        "愚人",
-                        "魔術師",
-                        "女教皇",
-                        "皇后",
-                        "皇帝",
-                        "教皇",
-                        "戀人",
-                        "戰車",
-                        "力量",
-                        "隱者",
-                        "命運之輪",
-                        "正義",
-                        "吊人",
-                        "死神",
-                        "節制",
-                        "惡魔",
-                        "塔",
-                        "星星",
-                        "月亮",
-                        "太陽",
-                        "審判",
-                        "世界"
-                    ]
-                    minorArcanaName = [
-                        "劍",
-                        "杖",
-                        "杯",
-                        "幣"
-                    ]
-                    minorArcanaNum = [
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "侍從",
-                        "騎士",
-                        "皇后",
-                        "國王"
-                    ]
-                    cardList = []
-                    for item in range(0,8,1):
-                        ifNum = random.randint(0, 78-1)
-                        if (ifNum >= (1-1) and ifNum < (22-1)):
-                            card = turn[random.randint(0, len(turn)-1)] + majorArcana[random.randint(0, len(majorArcana)-1)]
-                        else:
-                            card = turn[random.randint(0, len(turn)-1)] + minorArcanaName[random.randint(0, len(minorArcanaName)-1)] +\
-                                minorArcanaNum[random.randint(0, len(minorArcanaNum)-1)]
-                        cardList.append(card)
+    if not tool_calls:#不使用工具直接回傳結果
+        return response.choices[0].message.content.strip()
+    for tool_call in tool_calls:
+        if tool_call.function.name == "draw_tarot_cards":
+            function_args = json.loads(tool_call.function.arguments)
+            user_question = function_args.get("user_question")
+            cardList = perform_tarot_drawing_logic() 
+            tarotToAIsystemPrompt = '我抽了塔羅牌六芒星牌陣：\n"""\n'\
+                f'過去的狀況: {cardList[0]}\n現在的狀況: {cardList[1]}\n未來的狀況: {cardList[2]}\n'\
+                f'自己的心態: {cardList[3]}\n環境的狀態or對方的心態: {cardList[4]}\n這個狀況的困難點: {cardList[5]}\n'\
+                f'問題的結論: {cardList[6]}\n全局暗示(提問者抽牌當下整體的心態，包含但不局限於這個問題本身): {cardList[7]}\n"""\n'\
+                f'可以按照2條線型加上2個單點串在一起解釋，"過去的狀況-現在的狀況-未來的狀況"'\
+                f'"自己的心態-環境的狀態or對方的心態-這個狀況的困難點""問題的結論""全局暗示"\n'\
+                f'提問者的問題是"{user_question}"\n請幫我試著分析這個問題，並寫下你的思考過程，謝謝你'
+            second_response = openai_client.chat.completions.create(
+                model="gpt-4.1-2025-04-14",
+                messages=[
+                    {"role": "user", "content": tarotToAIsystemPrompt},
+                    response.choices[0].message,
+                    {
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": "draw_tarot_cards",
+                        "content": ""
+                    }
+                ],
+                temperature=1.2,
+                presence_penalty=0.5,
+                frequency_penalty=0.1,
+                top_p=0.9,
+                max_tokens=2000,
+                n=1
+            )
+            if response and response.choices:
+                reply_text=[]
+                reply_text.append(
+                    "占卜問題: "+user_question+"\n占卜結果: " 
+                    + "\n            " + cardList[0] + "\n" + cardList[4] + "          " + cardList[5] 
+                    + "\n            " + cardList[6] + "\n" + cardList[2] + "          " + cardList[1] 
+                    + "\n            " + cardList[3] + "\n\n全局暗示: "+ cardList[7]
+                )
+                reply_text.append(second_response.choices[0].message.content.strip()) 
+                if isinstance(reply_text, list):
+                    print_reply_text = ", ".join(reply_text)
+                print("\nOutput: "+print_reply_text)
+            return reply_text
+    #四元素 選擇牌陣
+    #給GPT清晰的文字，過去牌：杖2
+    #下一段對話給予主人勇氣
+    #量化結論 出數字 或是 評價評分
+    #貼圖每次重新歸納圖片重點，保持靈活性
+    #用拉岡理論去開導人
 
-                    print("卡牌", cardList)
-                    #四元素 選擇牌陣
-                    #給GPT清晰的文字，過去牌：杖2
-                    tarotToAIsystemPrompt = f'我抽了塔羅牌六芒星牌陣：\n"""\n過去的狀況: {cardList[0]}\n現在的狀況: {cardList[1]}\n未來的狀況: {cardList[2]}\n自己的心態: {cardList[3]}\n環境的狀態or對方的心態: {cardList[4]}\n這個狀況的困難點: {cardList[5]}\n問題的結論: {cardList[6]}\n全局暗示(提問者抽牌當下整體的心態，包含但不局限於這個問題本身): {cardList[7]}\n"""\n可以按照2條線型加上2個單點串在一起解釋，"過去的狀況-現在的狀況-未來的狀況""自己的心態-環境的狀態or對方的心態-這個狀況的困難點""問題的結論""全局暗示"\n提問者的問題是"{user_question}"\n請幫我試著分析這個問題，並寫下你的思考過程，謝謝你'
-                    # tarotToAIsystemPrompt = f'我抽了塔羅牌六芒星牌陣：\n"""\n       {cardList[0]}\n{cardList[4]}       {cardList[5]}\n       {cardList[6]}\n{cardList[2]}       {cardList[1]}\n       {cardList[3]}\n全局暗示: {cardList[7]}\n"""\n牌陣各自對應的位置為\n"""\n       過去的狀況\n環境的狀態or對方的心態       這個狀況的困難點\n       問題的結論\n未來的狀況       現在的狀況\n       自己的心態\n全局暗示: 提問者抽牌當下整體的心態，包含但不局限於這個問題本身\n"""\n可以按照2條線型加上2個單點串在一起解釋，"過去的狀況-現在的狀況-未來的狀況""自己的心態-環境的狀態or對方的心態-這個狀況的困難點""問題的結論""全局暗示"\n提問者的問題是"{user_question}"\n請幫我試著分析這個問題，並寫下你的思考過程，謝謝你'
-                    #下一段對話給予主人勇氣
-                    #量化結論 出數字 或是 評價評分
-                    #貼圖每次重新歸納圖片重點，保持靈活性
-                    #用拉岡理論去開導人
-                    response = openai_client.chat.completions.create(#給用戶勇氣
-                        model="gpt-4.1-2025-04-14",
-                        messages=[ 
-                            #{"role": "system", "content": toAIsystemPrompt},
-                            {"role": "user", "content": tarotToAIsystemPrompt},
-                        ],
-                        temperature=1.2,
-                        presence_penalty=0.5,
-                        frequency_penalty=0.1,
-                        top_p=0.9,
-                        max_tokens=2000,
-                        n=1
-                    )
-                    if response and response.choices:
-                        reply_text=[]
-                        reply_text.append("占卜問題: "+user_question+"\n占卜結果: " +         "\n            " + cardList[0] + "\n" + cardList[4] +\
-                        "          " + cardList[5] + "\n            " + cardList[6] + "\n" + cardList[2] +\
-                        "          " + cardList[1] + "\n            " + cardList[3] + "\n\n全局暗示: "+ cardList[7])
-                        
-                        reply_text.append(response.choices[0].message.content.strip()) #= response.choices[0].message.content.strip()
-                        if isinstance(reply_text, list):
-                            print_reply_text = ", ".join(reply_text)
-                        print("\nOutput: "+print_reply_text)
-
-                        #     mesText = "占卜結果: " +         "\n            " + cardList[0] + "\n" + cardList[4] +\
-                        # "          " + cardList[5] + "\n            " + cardList[6] + "\n" + cardList[2] +\
-                        # "          " + cardList[1] + "\n            " + cardList[3] + "\n\n全局暗示: "+ cardList[7]
-                    return reply_text
-        return reply_text
-
-
+def perform_tarot_drawing_logic():
+    turn = [
+        "正位",
+        "逆位"
+    ]
+    majorArcana = [
+        "愚人",
+        "魔術師",
+        "女教皇",
+        "皇后",
+        "皇帝",
+        "教皇",
+        "戀人",
+        "戰車",
+        "力量",
+        "隱者",
+        "命運之輪",
+        "正義",
+        "吊人",
+        "死神",
+        "節制",
+        "惡魔",
+        "塔",
+        "星星",
+        "月亮",
+        "太陽",
+        "審判",
+        "世界"
+    ]
+    minorArcanaName = [
+        "劍",
+        "杖",
+        "杯",
+        "幣"
+    ]
+    minorArcanaNum = [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "侍從",
+        "騎士",
+        "皇后",
+        "國王"
+    ]
+    cardList = []
+    for item in range(0,8,1):
+        ifNum = random.randint(0, 78-1)
+        if (ifNum >= (1-1) and ifNum < (22-1)):
+            card = turn[random.randint(0, len(turn)-1)] + majorArcana[random.randint(0, len(majorArcana)-1)]
+        else:
+            card = turn[random.randint(0, len(turn)-1)] + minorArcanaName[random.randint(0, len(minorArcanaName)-1)] +\
+                minorArcanaNum[random.randint(0, len(minorArcanaNum)-1)]
+        cardList.append(card)
+    print("卡牌", cardList)
+    return cardList
 
 # @handler.add(MessageEvent, message=StickerMessage)
 def handle_sticker_message(event):
