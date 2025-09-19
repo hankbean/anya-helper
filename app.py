@@ -6,6 +6,7 @@ import time
 import uuid
 from datetime import datetime, timezone, timedelta
 from urllib import parse
+import asyncio
 
 import configparser
 import gspread
@@ -16,7 +17,8 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from flask import Flask, request, abort
 from imgurpython import ImgurClient
-from linebot.v3 import WebhookHandler
+from linebot.v3 import WebhookParser
+# from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (
     ApiClient,
@@ -79,10 +81,8 @@ app = Flask(__name__)
 
 #line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
 line_bot_api_token = os.environ.get("Channel_Access_Token")
-print(line_bot_api_token)
-configuration = Configuration(access_token=os.environ.get("Channel_Access_Token"))
-print(configuration)
-handler = WebhookHandler(os.environ.get("Channel_Secret"))
+configuration = Configuration(access_token=line_bot_api_token)
+parser = WebhookParser(os.environ.get("Channel_Secret")) #handler
 client_id = config['imgur_api']['Client_ID']
 client_secret = config['imgur_api']['Client_Secret']
 album_id = config['imgur_api']['Album_ID']
@@ -100,20 +100,252 @@ def hello():
     return "ok!"
 
 @app.route("/callback", methods=['POST'])
-def callback():
-    # get X-Line-Signature header value
-    signature = request.headers['X-Line-Signature']
-    # get request body as text
-    body = request.get_data(as_text=True)
-    # print("body:",body)
-    # app.logger.info("Request body: " + body)
-    # handle webhook body
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        print("Invalid signature. Please check your channel access token/channel secret.")
-        abort(400)
+async def callback():
+    async with AsyncApiClient(configuration) as async_api_client:
+        line_bot_api = AsyncMessagingApi(async_api_client)
+        # get X-Line-Signature header value
+        signature = request.headers['X-Line-Signature']
+        # get request body as text
+        body = request.get_data(as_text=True)
+        # print("body:",body)
+        # app.logger.info("Request body: " + body)
+        # handle webhook body
+        try:
+            events = parser.parse(body, signature)
+            # handler.handle(body, signature)
+        except InvalidSignatureError:
+            print("Invalid signature. Please check your channel access token/channel secret.")
+            abort(400)
+        # 改成在 callback 函式內部自己處理事件迴圈
+        for event in events:
+            if isinstance(event, MessageEvent) and isinstance(event.message, TextMessageContent):
+                await line_bot_api.show_loading_animation(
+                    ShowLoadingAnimationRequest(chatId=event.source.user_id, loadingSeconds=60)
+                )
+                command_text = event.message.text
+                command_parts = command_text.split()
+                match command_parts:
+                    # case ["搜尋", keyword]:
+                    #     await handle_search_ptt(event, keyword)
+                    
+                    # case ["搜尋", *keywords]: # 匹配多個關鍵字
+                    #     full_keyword = " ".join(keywords)
+                    #     await handle_search_ptt(event, full_keyword)
+
+                    # case ["幫助"] | ["help"]:
+                    #     await show_help_message(event)
+                    case ["抽正牌"]:
+                        await handle_draw_tarot_card(event, line_bot_api)
+                        
+                    case ["骰子卡"]:
+                        await handle_roll_astro_dice(event, line_bot_api)
+
+                    case ["六芒星說明"]:
+                        await handle_hexagram_explanation(event, line_bot_api)
+
+                    case ["表特/"]:
+                        content = ptt_beauty()
+                        await sendNormalText(event, line_bot_api, content)
+
+                    case _:
+                        await handle_default_message(event, line_bot_api)
+                        pass
     return 'ok'
+
+async def handle_default_message(event, line_bot_api):
+    # user_name = MessagingApi(line_bot_api).get_profile(event.source.user_id).display_name
+    user_name = None
+    user_id = event.source.user_id
+    # with ApiClient(configuration) as api_client:
+    #     line_bot_api = MessagingApi(api_client)
+    try:
+        user_profile = await line_bot_api.get_profile(user_id)
+        user_name = user_profile.display_name
+    except Exception as e:
+        print(f"發生了一個錯誤: {e}")
+    message_text = event.message.text
+
+    # Process the message and update the database
+    # process_message(user_id, user_name, message_text)
+
+    # Reply to the user
+    # line_bot_api.reply_message(
+    #     event.reply_token,
+    #     TextSendMessage(text="Received your message: " + message_text))
+    # return 0
+    
+# def process_message(user_id, user_name, message_text):
+
+    # Insert or update user in the Users table
+    # data = {"userid": user_id,"username": user_name}
+    # response = supabase.table("users").upsert(data).execute()
+
+    user_response = supabase.table("users").upsert({
+        "userid": user_id,
+        "username": user_name if user_name else "",
+        "lastactiveat": "NOW()"
+    }, returning="minimal").execute()
+
+    # if isinstance(event.source, SourceGroup):
+    if event.source.type == 'group':
+        group_id = event.source.group_id
+        group_name = get_group_name(group_id, line_bot_api)
+        # group_name = "XXX"
+        print(group_name)
+
+        # 處理群組消息
+
+        # 檢查 Groups 表中是否存在該群組，如果不存在，則新增
+        group_response = supabase.table("groups").upsert({
+            "groupid": group_id,
+            "groupname": group_name,
+            "updatedat": "NOW()"
+        }, returning="minimal").execute()
+
+        # if group_response.error:
+        #     print(f"Error updating Groups table: {group_response.error.message}")
+        #     return
+
+        # 為這條群組消息建立或更新一個會話
+        session_response = supabase.table("sessions").upsert({
+            "sessionid": group_id,  # 使用 GroupID 作為 SessionID 進行簡化處理
+            "groupid": group_id,
+            "sessiontype": "group",
+            "updatedat": "NOW()"
+        }, returning="minimal").execute()
+
+        # if session_response.error:
+        #     print(f"Error updating Sessions table: {session_response.error.message}")
+        #     return
+
+        # 將消息儲存到 Messages 表中
+        message_response = supabase.table("messages").insert({
+            "messageid": str(uuid.uuid4()),
+            "sessionid": group_id,  # 同樣使用 GroupID 作為 SessionID
+            "userid": user_id,
+            "content": message_text,
+            "direction": "inbound"
+        }, returning="minimal").execute()
+
+        reply_text = None
+        if not message_text.endswith('/'):
+            reply_text = aiPrompt(group_id, user_id, user_name)
+        if reply_text:
+            # 將 AI 的回覆作為消息插入到 Messages 表中
+            if isinstance(reply_text, list):
+                ai_message_response = supabase.table("messages").insert({
+                    "messageid": str(uuid.uuid4()),
+                    "sessionid": group_id,
+                    "userid": user_id,
+                    "content": reply_text[1],
+                    "direction": "outbound"
+                }, returning="minimal").execute()
+            else:
+                ai_message_response = supabase.table("messages").insert({
+                    "messageid": str(uuid.uuid4()),
+                    "sessionid": group_id,
+                    "userid": user_id,
+                    "content": reply_text,
+                    "direction": "outbound"
+                }, returning="minimal").execute()
+
+            await sendNormalText(event, line_bot_api, reply_text)
+    else:
+        # if response.error:
+        #     print(f"Error inserting/updating user: {response.error.message}")
+        #     return
+
+        # 檢查最後一個會話的狀態，決定是否需要創建新會話
+        # ifUser = False
+        # if isinstance(event.source, SourceUser):
+        session_query = supabase.table("sessions").select("*").eq("userid", user_id).order("createdat", desc=True).limit(1).execute()
+            # ifUser = True
+        # if isinstance(event.source, SourceGroup):
+            # session_query = supabase.table("sessions").select("*").eq("userid", event.source.group_id).order("createdat", desc=True).limit(1).execute()
+        # Insert a new session for the user
+        # session_data = {"sessionid": user_id, "userid": user_id, "status": "active"}
+        # session_response = supabase.table("sessions").upsert(session_data).execute()
+
+        # 如果不存在會話或最後一個會話已結束，創建新會話
+        # useridORgroupid = user_id if ifUser else event.source.group_id
+        # print(useridORgroupid)
+
+        #如果用戶沒有加好友會無法讀取用戶name
+        if not session_query.data or session_query.data[0]["status"] == "ended": # or (datetime.now() - datetime.fromisoformat(session_query.data[0]["UpdatedAt"].replace("Z", "+00:00"))).total_seconds() > 3600:
+            new_session_id = str(uuid.uuid4())
+            session_response = supabase.table("sessions").insert({
+                "sessionid": new_session_id,
+                "userid": user_id,
+                "status": "active"
+            }, returning="minimal").execute()
+
+            # if session_response.error:
+            #     print(f"Error creating new session: {session_response.error.message}")
+            #     return
+        else:
+            # 如果存在活動會話，則更新其 UpdatedAt 時間戳
+            new_session_id = session_query.data[0]["sessionid"]
+            session_response = supabase.table("sessions").update({
+                "updatedat": "NOW()"
+            }).eq("sessionid", new_session_id).execute()
+
+            # if session_response.error:
+            #     print(f"Error updating session: {session_response.error.message}")
+            #     return
+        # if session_response.error:
+        #     print(f"Error inserting/updating session: {session_response.error.message}")
+        #     return
+
+        # Insert the message into the Messages table
+        # message_data = {
+        #     "sessionid": user_id,
+        #     "sessionid": user_id,
+        #     "userid": user_id,
+        #     "content": message_text,
+        #     "direction": "inbound"
+        # }
+        # message_response = supabase.table("messages").insert(message_data).execute()
+
+        # if message_response.error:
+        #     print(f"Error inserting message: {message_response.error.message}")
+        message_response = supabase.table("messages").insert({
+            "messageid": str(uuid.uuid4()),
+            "sessionid": new_session_id,
+            "userid": user_id,
+            "content": message_text,
+            "direction": "inbound"
+        }, returning="minimal").execute()
+        
+        reply_text = None
+        BLACKLIST_USERS = {
+            "U05893ab5a753814f29b5feb91046050e",
+            "U57d8a8e7bbc2aa06b53821a1693dd46d",
+            ""
+        }
+        if not message_text.endswith('/') and not user_id in BLACKLIST_USERS:
+            reply_text = aiPrompt(new_session_id, user_id, user_name)
+        if reply_text:
+            # 將 AI 的回覆作為消息插入到 Messages 表中
+            if isinstance(reply_text, list):
+                ai_message_response = supabase.table("messages").insert({
+                    "messageid": str(uuid.uuid4()),
+                    "sessionid": new_session_id,
+                    "userid": user_id,
+                    "content": reply_text[1],
+                    "direction": "outbound"
+                }, returning="minimal").execute()
+            else:
+                ai_message_response = supabase.table("messages").insert({
+                    "messageid": str(uuid.uuid4()),
+                    "sessionid": new_session_id,
+                    "userid": user_id,
+                    "content": reply_text,
+                    "direction": "outbound"
+                }, returning="minimal").execute()
+            # if ai_message_response.error:
+            #     print(f"Error inserting AI message into Messages table: {ai_message_response.error.message}")
+            #     return
+            await sendNormalText(event, line_bot_api, reply_text)
 
 def get_page_number(content):
     start_index = content.find('Beauty?pn=')
@@ -331,6 +563,13 @@ def ptt_beauty():
         content = "找不到符合條件的內容。"
     return content
 
+async def handle_get_beauty_image(event, line_bot_api):
+    client = ImgurClient(client_id, client_secret)
+    images = client.get_album_images(album_id)
+    index = random.randint(0, len(images) - 1)
+    url = images[index].link
+    await sendImageMessage(event, line_bot_api, url, url)
+
 # def sheet(self):
 #     #連接sheet
 #     auth_json_path = 'credentials.json'
@@ -352,32 +591,90 @@ def get_group_name(groupId, line_bot_api):
         print (response)
         return '請求失敗，錯誤碼: ' + str(response.status_code) + str(response.content)
     
-def sendNormalText(event, textContent):
+async def handle_draw_tarot_card(event, line_bot_api):
+    client = ImgurClient(client_id, client_secret)
+    images = client.get_album_images("jAqXRhh")#client.get_album_images("l8aRa")
+    index = random.randint(0, len(images) - 1)
+    url = images[index].link
+    await sendImageMessage(event, line_bot_api, url, url)
+
+async def handle_roll_astro_dice(event, line_bot_api):
+    starNum = random.randint(0, 11)
+    signNum = random.randint(0, 11)
+    palaceNum = random.randint(0, 11)
+    star = [
+        "月亮",
+        "水星",
+        "金星",
+        "太陽",
+        "火星",
+        "木星",
+        "土星",
+        "天王星",
+        "海王星",
+        "冥王星",
+        "凱隆星",
+        "北交點"
+    ]
+    sign = [
+        "♈白羊",
+        "♉金牛",
+        "♊雙子",
+        "♋巨蟹",
+        "♌獅子",
+        "♍處女",
+        "♎天秤",
+        "♏天蝎",
+        "♐射手",
+        "♑摩羯",
+        "♒水瓶",
+        "♓雙魚"
+    ] 
+    palace = [
+        "1宮",
+        "2宮",
+        "3宮",
+        "4宮",
+        "5宮",
+        "6宮",
+        "7宮",
+        "8宮",
+        "9宮",
+        "10宮",
+        "11宮",
+        "12宮"
+    ] 
+    mesText = star[starNum] + "，" + sign[signNum] + "，" + palace[palaceNum]
+    await sendNormalText(event, line_bot_api, mesText)
+
+async def handle_hexagram_explanation(event, line_bot_api):
+    textContent="牌陣說明: \n              過去\n對方心態          困難點\n              " +\
+            "結論\n   未來               現在\n          自己的心態\n全局暗示\n(對方心態)可以換成(環境狀況)"
+    await sendNormalText(event, line_bot_api, textContent)
+    
+async def sendNormalText(event, line_bot_api, textContent):
     limit = 5000
     if len(textContent) > limit:
         # 截斷字串，留一些空間加上提示訊息
         textContent = textContent[:limit - 50] + "\n... (因內容過長，已省略部分)"
-    with ApiClient(configuration) as api_client:
-        line_bot_api = MessagingApi(api_client)
-        if isinstance(textContent, list):
-            messages = [TextMessage(text=text) for text in textContent]
-        else:
-            messages = [TextMessage(text=textContent)]
-        lineMessage = line_bot_api.reply_message_with_http_info(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=messages#[TextMessage(text=textContent)]#
-            )
+    # with ApiClient(configuration) as api_client:
+    #     line_bot_api = MessagingApi(api_client)
+    if isinstance(textContent, list):
+        messages = [TextMessage(text=text) for text in textContent]
+    else:
+        messages = [TextMessage(text=textContent)]
+    lineMessage = await line_bot_api.reply_message(
+        ReplyMessageRequest(
+            reply_token=event.reply_token,
+            messages=messages
         )
-        # print(event,"\n",lineMessage)
+    )
     return lineMessage
 
-def sendImageMessage(event, oriUrl, preUrl):
-    with ApiClient(configuration) as api_client:
-        line_bot_api = MessagingApi(api_client)
+async def sendImageMessage(event, line_bot_api, oriUrl, preUrl):
         messages = [ImageMessage(original_content_url=oriUrl,
             preview_image_url=preUrl)]
-        line_bot_api.reply_message_with_http_info(
+        await line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=messages
@@ -626,7 +923,7 @@ def handle_sticker_message(event):
             sticker_id=sid)
         )
    
-@handler.add(MessageEvent, message=TextMessageContent)
+# @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     # with ApiClient(configuration) as api_client:
     #     line_bot_api = MessagingApi(api_client)
@@ -1057,23 +1354,6 @@ def handle_message(event):
             event.reply_token,
             TextSendMessage(text=content))
         return 0
-    if event.message.text == "妹/":
-        content = ptt_beauty()
-        sendNormalText(event, content)
-        return 0
-    if event.message.text == "抽正妹/":
-        client = ImgurClient(client_id, client_secret)
-        images = client.get_album_images(album_id)
-        index = random.randint(0, len(images) - 1)
-        url = images[index].link
-        sendImageMessage(event, url, url)
-        # image_message = ImageSendMessage(
-        #     original_content_url=url,
-        #     preview_image_url=url
-        # )
-        # line_bot_api.reply_message(
-        #     event.reply_token, image_message)
-        return 0
     # if event.message.text == "抽":
         # im = pyimgur.Imgur(client_id, client_secret)
         # image = im.get_image('CQbj5xZ')
@@ -1111,18 +1391,6 @@ def handle_message(event):
                 )
             )
         return 0
-    if event.message.text == "抽正牌":
-        client = ImgurClient(client_id, client_secret)
-        images = client.get_album_images("jAqXRhh")#client.get_album_images("l8aRa")
-        index = random.randint(0, len(images) - 1)
-        url = images[index].link
-        image_message = ImageSendMessage(
-            original_content_url=url,
-            preview_image_url=url
-        )
-        line_bot_api.reply_message(
-            event.reply_token, image_message)
-        return 0
     # if event.message.text == "抽牌圖test":
         client = ImgurClient(client_id, client_secret)
         images = client.get_album_images("l8aRa")
@@ -1146,179 +1414,7 @@ def handle_message(event):
         line_bot_api.reply_message(
             event.reply_token, image_message)
         return 0
-    # if event.message.text == "近期熱門廢文":
-        content = ptt_hot()
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=content))
-        return 0
-    # if event.message.text == "即時廢文":
-        content = ptt_gossiping()
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=content))
-        return 0
-    # if event.message.text == "近期上映電影":
-        content = movie()
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=content))
-        return 0
-    # if event.message.text == "科技新報":
-        content = technews()
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=content))
-        return 0
-    # if event.message.text == "PanX泛科技":
-        content = panx()
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=content))
-        return 0
-    # if event.message.text == "開始玩":
-        buttons_template = TemplateSendMessage(
-            alt_text='開始玩 template',
-            template=ButtonsTemplate(
-                title='選擇服務',
-                text='請選擇',
-                thumbnail_image_url='https://i.imgur.com/xQF5dZT.jpg',
-                actions=[
-                    MessageTemplateAction(
-                        label='新聞',
-                        text='新聞'
-                    ),
-                    MessageTemplateAction(
-                        label='電影',
-                        text='電影'
-                    ),
-                    MessageTemplateAction(
-                        label='看廢文',
-                        text='看廢文'
-                    ),
-                    MessageTemplateAction(
-                        label='正妹',
-                        text='正妹'
-                    )
-                ]
-            )
-        )
-        line_bot_api.reply_message(event.reply_token, buttons_template)
-        return 0
-    # if event.message.text == "新聞":
-        buttons_template = TemplateSendMessage(
-            alt_text='新聞 template',
-            template=ButtonsTemplate(
-                title='新聞類型',
-                text='請選擇',
-                thumbnail_image_url='https://i.imgur.com/vkqbLnz.png',
-                actions=[
-                    MessageTemplateAction(
-                        label='蘋果即時新聞',
-                        text='蘋果即時新聞'
-                    ),
-                    MessageTemplateAction(
-                        label='科技新報',
-                        text='科技新報'
-                    ),
-                    MessageTemplateAction(
-                        label='PanX泛科技',
-                        text='PanX泛科技'
-                    )
-                ]
-            )
-        )
-        line_bot_api.reply_message(event.reply_token, buttons_template)
-        return 0
-    # if event.message.text == "電影":
-        buttons_template = TemplateSendMessage(
-            alt_text='電影 template',
-            template=ButtonsTemplate(
-                title='服務類型',
-                text='請選擇',
-                thumbnail_image_url='https://i.imgur.com/sbOTJt4.png',
-                actions=[
-                    MessageTemplateAction(
-                        label='近期上映電影',
-                        text='近期上映電影'
-                    ),
-                    MessageTemplateAction(
-                        label='eyny',
-                        text='eyny'
-                    )
-                ]
-            )
-        )
-        line_bot_api.reply_message(event.reply_token, buttons_template)
-        return 0
-    # if event.message.text == "看廢文":
-        buttons_template = TemplateSendMessage(
-            alt_text='看廢文 template',
-            template=ButtonsTemplate(
-                title='你媽知道你在看廢文嗎',
-                text='請選擇',
-                thumbnail_image_url='https://i.imgur.com/ocmxAdS.jpg',
-                actions=[
-                    MessageTemplateAction(
-                        label='近期熱門廢文',
-                        text='近期熱門廢文'
-                    ),
-                    MessageTemplateAction(
-                        label='即時廢文',
-                        text='即時廢文'
-                    )
-                ]
-            )
-        )
-        line_bot_api.reply_message(event.reply_token, buttons_template)
-        return 0
-    # if event.message.text == "正妹":
-        buttons_template = TemplateSendMessage(
-            alt_text='正妹 template',
-            template=ButtonsTemplate(
-                title='選擇服務',
-                text='請選擇',
-                thumbnail_image_url='https://i.imgur.com/qKkE2bj.jpg',
-                actions=[
-                    MessageTemplateAction(
-                        label='PTT 表特版 近期大於 10 推的文章',
-                        text='PTT 表特版 近期大於 10 推的文章'
-                    ),
-                    MessageTemplateAction(
-                        label='來張 imgur 正妹圖片',
-                        text='來張 imgur 正妹圖片'
-                    ),
-                    MessageTemplateAction(
-                        label='隨便來張正妹圖片',
-                        text='抽正妹'
-                    )
-                ]
-            )
-        )
-        line_bot_api.reply_message(event.reply_token, buttons_template)
-        return 0
-    # if event.message.text == "#測試":
-        buttons_template = TemplateSendMessage(
-            alt_text='目錄 template',
-            template=ButtonsTemplate(
-                title='選擇服務',
-                text='請選擇',
-                thumbnail_image_url='https://i.imgur.com/kzi5kKy.jpg',
-                actions=[
-                    MessageTemplateAction(
-                        label='開始玩',
-                        text='開始玩'
-                    ),
-                    URITemplateAction(
-                        label='youtube',
-                        uri='https://youtu.be'
-                    )
-                ]
-            )
-        )
-        line_bot_api.reply_message(event.reply_token, buttons_template)
-        return 0
-    
+
     if event.message.text =="易經" or event.message.text =="新科學":
         textContent = "功能開發中"
         sendNormalText(event, textContent)
@@ -1443,64 +1539,6 @@ def handle_message(event):
         #         text=mesText
         #     )
         # )
-        sendNormalText(event, mesText)
-        return 0
-    if event.message.text == "骰子卡":
-        starNum = random.randint(0, 11)
-        signNum = random.randint(0, 11)
-        palaceNum = random.randint(0, 11)
-        star = [
-            "月亮",
-            "水星",
-            "金星",
-            "太陽",
-            "火星",
-            "木星",
-            "土星",
-            "天王星",
-            "海王星",
-            "冥王星",
-            "凱隆星",
-            "北交點"
-        ]
-        sign = [
-            "♈白羊",
-            "♉金牛",
-            "♊雙子",
-            "♋巨蟹",
-            "♌獅子",
-            "♍處女",
-            "♎天秤",
-            "♏天蝎",
-            "♐射手",
-            "♑摩羯",
-            "♒水瓶",
-            "♓雙魚"
-        ] 
-        palace = [
-            "1宮",
-            "2宮",
-            "3宮",
-            "4宮",
-            "5宮",
-            "6宮",
-            "7宮",
-            "8宮",
-            "9宮",
-            "10宮",
-            "11宮",
-            "12宮"
-        ] 
-        mesText = star[starNum] + "，" + sign[signNum] + "，" + palace[palaceNum]
-        # cur = conn.cursor()
-        # cur.execute(
-        #     """INSERT INTO MESSAGE (ID,NAME,MES,DATETIME,TIMESTAMP) VALUES (%s, %s, %s, %s ,%s)""",
-        #     ("me", dbname, mesText, dbtim, dbts )
-        # );
-        # conn.commit()
-        # line_bot_api.reply_message(
-        #     event.reply_token,
-        #     TextSendMessage(text=mesText))
         sendNormalText(event, mesText)
         return 0
     # if event.message.text == "進階骰子卡":
@@ -1774,18 +1812,7 @@ def handle_message(event):
 
         return 0
 
-    if event.message.text == "六芒星說明":
-        textContent="牌陣說明: \n              過去\n對方心態          困難點\n              " +\
-                "結論\n   未來               現在\n          自己的心態\n全局暗示\n(對方心態)可以換成(環境狀況)"
-        # line_bot_api.reply_message(
-        #     event.reply_token,
-        #     TextSendMessage(
-        #         text="牌陣說明: \n              過去\n對方心態          困難點\n              " +\
-        #         "結論\n   未來               現在\n          自己的心態\n全局暗示\n(對方心態)可以換成(環境狀況)"
-        #     )
-        # ) 
-        sendNormalText(event, textContent)
-        return 0
+
 
     # if event.message.text == "文大吃什麼" or event.message.text == "吃啥":
         answers = [
@@ -2303,215 +2330,6 @@ def handle_message(event):
                 event.reply_token,
                 TextMessage(text="Bot can't use profile API without user ID"))
         return 0
-    elif 1:
-
-        # user_name = MessagingApi(line_bot_api).get_profile(event.source.user_id).display_name
-        user_name = None
-        user_id = event.source.user_id
-        with ApiClient(configuration) as api_client:
-            line_bot_api = MessagingApi(api_client)
-            try:
-                user_name = line_bot_api.get_profile(user_id).display_name
-            except Exception as e:
-                print(f"發生了一個錯誤: {e}")
-        message_text = event.message.text
-
-        # Process the message and update the database
-        # process_message(user_id, user_name, message_text)
-
-        # Reply to the user
-        # line_bot_api.reply_message(
-        #     event.reply_token,
-        #     TextSendMessage(text="Received your message: " + message_text))
-        # return 0
-        
-# def process_message(user_id, user_name, message_text):
-    
-        # Insert or update user in the Users table
-        # data = {"userid": user_id,"username": user_name}
-        # response = supabase.table("users").upsert(data).execute()
-
-        
-        user_response = supabase.table("users").upsert({
-            "userid": user_id,
-            "username": user_name if user_name else "",
-            "lastactiveat": "NOW()"
-        }, returning="minimal").execute()
-
-        # if isinstance(event.source, SourceGroup):
-        if event.source.type == 'group':
-            group_id = event.source.group_id
-            group_name = get_group_name(group_id, line_bot_api)
-            # group_name = "XXX"
-            print(group_name)
-
-
-            # 處理群組消息
-
-            # 檢查 Groups 表中是否存在該群組，如果不存在，則新增
-            group_response = supabase.table("groups").upsert({
-                "groupid": group_id,
-                "groupname": group_name,
-                "updatedat": "NOW()"
-            }, returning="minimal").execute()
-
-            # if group_response.error:
-            #     print(f"Error updating Groups table: {group_response.error.message}")
-            #     return
-
-            # 為這條群組消息建立或更新一個會話
-            session_response = supabase.table("sessions").upsert({
-                "sessionid": group_id,  # 使用 GroupID 作為 SessionID 進行簡化處理
-                "groupid": group_id,
-                "sessiontype": "group",
-                "updatedat": "NOW()"
-            }, returning="minimal").execute()
-
-            # if session_response.error:
-            #     print(f"Error updating Sessions table: {session_response.error.message}")
-            #     return
-
-            # 將消息儲存到 Messages 表中
-            message_response = supabase.table("messages").insert({
-                "messageid": str(uuid.uuid4()),
-                "sessionid": group_id,  # 同樣使用 GroupID 作為 SessionID
-                "userid": user_id,
-                "content": message_text,
-                "direction": "inbound"
-            }, returning="minimal").execute()
-
-            reply_text = None
-            if not message_text.endswith('/'):
-                reply_text = aiPrompt(group_id, user_id, user_name)
-            if reply_text:
-                # 將 AI 的回覆作為消息插入到 Messages 表中
-                if isinstance(reply_text, list):
-                    ai_message_response = supabase.table("messages").insert({
-                        "messageid": str(uuid.uuid4()),
-                        "sessionid": group_id,
-                        "userid": user_id,
-                        "content": reply_text[1],
-                        "direction": "outbound"
-                    }, returning="minimal").execute()
-                else:
-                    ai_message_response = supabase.table("messages").insert({
-                        "messageid": str(uuid.uuid4()),
-                        "sessionid": group_id,
-                        "userid": user_id,
-                        "content": reply_text,
-                        "direction": "outbound"
-                    }, returning="minimal").execute()
-
-                # 使用 Line Bot API 將 GPT 的回覆發送給用戶
-                sendNormalText(event, reply_text)
-                # line_bot_api.reply_message(
-                #     event.reply_token,
-                #     TextSendMessage(text=reply_text)
-                # )
-
-            # 此處可添加使用 GPT 生成回覆並回覆到群組的邏輯
-        else:
-            
-            # 處理個人消息
-
-            # if response.error:
-            #     print(f"Error inserting/updating user: {response.error.message}")
-            #     return
-
-            # 檢查最後一個會話的狀態，決定是否需要創建新會話
-            # ifUser = False
-            # if isinstance(event.source, SourceUser):
-            session_query = supabase.table("sessions").select("*").eq("userid", user_id).order("createdat", desc=True).limit(1).execute()
-                # ifUser = True
-            # if isinstance(event.source, SourceGroup):
-                # session_query = supabase.table("sessions").select("*").eq("userid", event.source.group_id).order("createdat", desc=True).limit(1).execute()
-            # Insert a new session for the user
-            # session_data = {"sessionid": user_id, "userid": user_id, "status": "active"}
-            # session_response = supabase.table("sessions").upsert(session_data).execute()
-
-            # 如果不存在會話或最後一個會話已結束，創建新會話
-            # useridORgroupid = user_id if ifUser else event.source.group_id
-            # print(useridORgroupid)
-
-            #如果用戶沒有加好友會無法讀取用戶name
-            if not session_query.data or session_query.data[0]["status"] == "ended": # or (datetime.now() - datetime.fromisoformat(session_query.data[0]["UpdatedAt"].replace("Z", "+00:00"))).total_seconds() > 3600:
-                new_session_id = str(uuid.uuid4())
-                session_response = supabase.table("sessions").insert({
-                    "sessionid": new_session_id,
-                    "userid": user_id,
-                    "status": "active"
-                }, returning="minimal").execute()
-
-                # if session_response.error:
-                #     print(f"Error creating new session: {session_response.error.message}")
-                #     return
-            else:
-                # 如果存在活動會話，則更新其 UpdatedAt 時間戳
-                new_session_id = session_query.data[0]["sessionid"]
-                session_response = supabase.table("sessions").update({
-                    "updatedat": "NOW()"
-                }).eq("sessionid", new_session_id).execute()
-
-                # if session_response.error:
-                #     print(f"Error updating session: {session_response.error.message}")
-                #     return
-            # if session_response.error:
-            #     print(f"Error inserting/updating session: {session_response.error.message}")
-            #     return
-
-            # Insert the message into the Messages table
-            # message_data = {
-            #     "sessionid": user_id,
-            #     "sessionid": user_id,
-            #     "userid": user_id,
-            #     "content": message_text,
-            #     "direction": "inbound"
-            # }
-            # message_response = supabase.table("messages").insert(message_data).execute()
-
-            # if message_response.error:
-            #     print(f"Error inserting message: {message_response.error.message}")
-            message_response = supabase.table("messages").insert({
-                "messageid": str(uuid.uuid4()),
-                "sessionid": new_session_id,
-                "userid": user_id,
-                "content": message_text,
-                "direction": "inbound"
-            }, returning="minimal").execute()
-            
-            reply_text = None
-            BLACKLIST_USERS = {
-                "U05893ab5a753814f29b5feb91046050e",
-                "U57d8a8e7bbc2aa06b53821a1693dd46d",
-                ""
-            }
-            if not message_text.endswith('/') and not user_id in BLACKLIST_USERS:
-                reply_text = aiPrompt(new_session_id, user_id, user_name)
-            if reply_text:
-                # 將 AI 的回覆作為消息插入到 Messages 表中
-                if isinstance(reply_text, list):
-                    ai_message_response = supabase.table("messages").insert({
-                        "messageid": str(uuid.uuid4()),
-                        "sessionid": new_session_id,
-                        "userid": user_id,
-                        "content": reply_text[1],
-                        "direction": "outbound"
-                    }, returning="minimal").execute()
-                else:
-                    ai_message_response = supabase.table("messages").insert({
-                        "messageid": str(uuid.uuid4()),
-                        "sessionid": new_session_id,
-                        "userid": user_id,
-                        "content": reply_text,
-                        "direction": "outbound"
-                    }, returning="minimal").execute()
-
-                # if ai_message_response.error:
-                #     print(f"Error inserting AI message into Messages table: {ai_message_response.error.message}")
-                #     return
-
-                # 使用 Line Bot API 將 GPT 的回覆發送給用戶
-                sendNormalText(event, reply_text)
     return 0
     if 1:
         return
