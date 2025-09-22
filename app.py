@@ -33,8 +33,10 @@ from linebot.v3.messaging import (
 )
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from oauth2client.service_account import ServiceAccountCredentials
-from openai import OpenAI
-from supabase import Client, create_client
+# from openai import OpenAI
+from openai import AsyncOpenAI
+# from supabase import Client, create_client
+from supabase import AsyncClient, AsyncClientOptions, acreate_client
 
 #verTime = "2022.Apr.03.5" # 版本
 #verAnswer= "回答"
@@ -43,7 +45,7 @@ config = configparser.ConfigParser()
 config.read("config.ini")
 load_dotenv()
 
-openai_api_key = os.environ.get("OPENAI_API")
+""" openai_api_key = os.environ.get("OPENAI_API")
 if not openai_api_key:
     raise ValueError("找不到 OPENAI_API 環境變數")
 # 初始化 OpenAI 客戶端
@@ -51,7 +53,7 @@ openai_client = OpenAI(api_key = openai_api_key)
 # 初始化 supabase 客戶端
 supaurl: str = os.environ.get("SUPABASE_URL")
 supakey: str = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(supaurl, supakey)
+supabase: Client = create_client(supaurl, supakey) """
 
 # print ("Opening database......")
 ###DATABASE
@@ -101,8 +103,20 @@ def hello():
 
 @app.route("/callback", methods=['POST'])
 async def callback():
-    async with AsyncApiClient(configuration) as async_api_client:
+    async_api_client = None
+    supabase_async_client = None
+    openai_async_client = None
+    try:
+        #Line API
+        async_api_client = AsyncApiClient(configuration)
         line_bot_api = AsyncMessagingApi(async_api_client)
+        #supabase API
+        supaurl: str = os.environ.get("SUPABASE_URL")
+        supakey: str = os.environ.get("SUPABASE_KEY")
+        supabase_async_client : AsyncClient = await acreate_client(supaurl, supakey)
+        #OpenAI API
+        openai_api_key = os.environ.get("OPENAI_API")
+        openai_async_client = AsyncOpenAI(api_key=openai_api_key)
         # get X-Line-Signature header value
         signature = request.headers['X-Line-Signature']
         # get request body as text
@@ -116,7 +130,6 @@ async def callback():
         except InvalidSignatureError:
             print("Invalid signature. Please check your channel access token/channel secret.")
             abort(400)
-        # 改成在 callback 函式內部自己處理事件迴圈
         for event in events:
             if isinstance(event, MessageEvent) and isinstance(event.message, TextMessageContent):
                 await line_bot_api.show_loading_animation(
@@ -148,11 +161,18 @@ async def callback():
                         await sendNormalText(event, line_bot_api, content)
 
                     case _:
-                        await handle_default_message(event, line_bot_api)
+                        await handle_default_message(event, line_bot_api, supabase_async_client, openai_async_client)
                         pass
+    finally:
+        # print("Closing clients...")
+        if async_api_client:
+            await async_api_client.close()
+        if openai_async_client:
+            await openai_async_client.close()
+        # print("Clients closed.")
     return 'ok'
 
-async def handle_default_message(event, line_bot_api):
+async def handle_default_message(event, line_bot_api, supabase_async_client, openai_async_client):
     # user_name = MessagingApi(line_bot_api).get_profile(event.source.user_id).display_name
     user_name = None
     user_id = event.source.user_id
@@ -180,7 +200,7 @@ async def handle_default_message(event, line_bot_api):
     # data = {"userid": user_id,"username": user_name}
     # response = supabase.table("users").upsert(data).execute()
 
-    user_response = supabase.table("users").upsert({
+    user_response = await supabase_async_client.table("users").upsert({
         "userid": user_id,
         "username": user_name if user_name else "",
         "lastactiveat": "NOW()"
@@ -189,14 +209,14 @@ async def handle_default_message(event, line_bot_api):
     # if isinstance(event.source, SourceGroup):
     if event.source.type == 'group':
         group_id = event.source.group_id
-        group_name = get_group_name(group_id, line_bot_api)
+        group_name = await get_group_name_async(group_id, line_bot_api)
         # group_name = "XXX"
         print(group_name)
 
         # 處理群組消息
 
         # 檢查 Groups 表中是否存在該群組，如果不存在，則新增
-        group_response = supabase.table("groups").upsert({
+        group_response = await supabase_async_client.table("groups").upsert({
             "groupid": group_id,
             "groupname": group_name,
             "updatedat": "NOW()"
@@ -207,7 +227,7 @@ async def handle_default_message(event, line_bot_api):
         #     return
 
         # 為這條群組消息建立或更新一個會話
-        session_response = supabase.table("sessions").upsert({
+        session_response = await supabase_async_client.table("sessions").upsert({
             "sessionid": group_id,  # 使用 GroupID 作為 SessionID 進行簡化處理
             "groupid": group_id,
             "sessiontype": "group",
@@ -219,7 +239,7 @@ async def handle_default_message(event, line_bot_api):
         #     return
 
         # 將消息儲存到 Messages 表中
-        message_response = supabase.table("messages").insert({
+        message_response = await supabase_async_client.table("messages").insert({
             "messageid": str(uuid.uuid4()),
             "sessionid": group_id,  # 同樣使用 GroupID 作為 SessionID
             "userid": user_id,
@@ -229,11 +249,11 @@ async def handle_default_message(event, line_bot_api):
 
         reply_text = None
         if not message_text.endswith('/'):
-            reply_text = aiPrompt(group_id, user_id, user_name)
+            reply_text = await aiPrompt(group_id, user_id, user_name, supabase_async_client, openai_async_client)
         if reply_text:
             # 將 AI 的回覆作為消息插入到 Messages 表中
             if isinstance(reply_text, list):
-                ai_message_response = supabase.table("messages").insert({
+                ai_message_response = await supabase_async_client.table("messages").insert({
                     "messageid": str(uuid.uuid4()),
                     "sessionid": group_id,
                     "userid": user_id,
@@ -241,7 +261,7 @@ async def handle_default_message(event, line_bot_api):
                     "direction": "outbound"
                 }, returning="minimal").execute()
             else:
-                ai_message_response = supabase.table("messages").insert({
+                ai_message_response = await supabase_async_client.table("messages").insert({
                     "messageid": str(uuid.uuid4()),
                     "sessionid": group_id,
                     "userid": user_id,
@@ -258,7 +278,7 @@ async def handle_default_message(event, line_bot_api):
         # 檢查最後一個會話的狀態，決定是否需要創建新會話
         # ifUser = False
         # if isinstance(event.source, SourceUser):
-        session_query = supabase.table("sessions").select("*").eq("userid", user_id).order("createdat", desc=True).limit(1).execute()
+        session_query = await supabase_async_client.table("sessions").select("*").eq("userid", user_id).order("createdat", desc=True).limit(1).execute()
             # ifUser = True
         # if isinstance(event.source, SourceGroup):
             # session_query = supabase.table("sessions").select("*").eq("userid", event.source.group_id).order("createdat", desc=True).limit(1).execute()
@@ -271,9 +291,10 @@ async def handle_default_message(event, line_bot_api):
         # print(useridORgroupid)
 
         #如果用戶沒有加好友會無法讀取用戶name
+        print(session_query)
         if not session_query.data or session_query.data[0]["status"] == "ended": # or (datetime.now() - datetime.fromisoformat(session_query.data[0]["UpdatedAt"].replace("Z", "+00:00"))).total_seconds() > 3600:
             new_session_id = str(uuid.uuid4())
-            session_response = supabase.table("sessions").insert({
+            session_response = await supabase_async_client.table("sessions").insert({
                 "sessionid": new_session_id,
                 "userid": user_id,
                 "status": "active"
@@ -285,7 +306,7 @@ async def handle_default_message(event, line_bot_api):
         else:
             # 如果存在活動會話，則更新其 UpdatedAt 時間戳
             new_session_id = session_query.data[0]["sessionid"]
-            session_response = supabase.table("sessions").update({
+            session_response = await supabase_async_client.table("sessions").update({
                 "updatedat": "NOW()"
             }).eq("sessionid", new_session_id).execute()
 
@@ -308,7 +329,7 @@ async def handle_default_message(event, line_bot_api):
 
         # if message_response.error:
         #     print(f"Error inserting message: {message_response.error.message}")
-        message_response = supabase.table("messages").insert({
+        message_response = await supabase_async_client.table("messages").insert({
             "messageid": str(uuid.uuid4()),
             "sessionid": new_session_id,
             "userid": user_id,
@@ -323,11 +344,11 @@ async def handle_default_message(event, line_bot_api):
             ""
         }
         if not message_text.endswith('/') and not user_id in BLACKLIST_USERS:
-            reply_text = aiPrompt(new_session_id, user_id, user_name)
+            reply_text = await aiPrompt(new_session_id, user_id, user_name, supabase_async_client, openai_async_client)
         if reply_text:
             # 將 AI 的回覆作為消息插入到 Messages 表中
             if isinstance(reply_text, list):
-                ai_message_response = supabase.table("messages").insert({
+                ai_message_response = await supabase_async_client.table("messages").insert({
                     "messageid": str(uuid.uuid4()),
                     "sessionid": new_session_id,
                     "userid": user_id,
@@ -335,7 +356,7 @@ async def handle_default_message(event, line_bot_api):
                     "direction": "outbound"
                 }, returning="minimal").execute()
             else:
-                ai_message_response = supabase.table("messages").insert({
+                ai_message_response = await supabase_async_client.table("messages").insert({
                     "messageid": str(uuid.uuid4()),
                     "sessionid": new_session_id,
                     "userid": user_id,
@@ -579,7 +600,15 @@ async def handle_get_beauty_image(event, line_bot_api):
 #     spreadsheet_key = '' #建立工作表1
 #     return gss_client.open_by_key(spreadsheet_key).sheet1
 
-def get_group_name(groupId, line_bot_api):
+async def get_group_name_async(group_id, line_bot_api):
+    try:
+        summary = await line_bot_api.get_group_summary(group_id)
+        return summary.group_name
+    except Exception as e:
+        print(f"Error getting group name: {e}")
+        return "未知群組"
+
+""" def get_group_name(groupId, line_bot_api):
     headers = {
         "content-type": "application/json; charset=UTF-8",'Authorization':'Bearer {}'.format(line_bot_api_token)
     }
@@ -589,7 +618,7 @@ def get_group_name(groupId, line_bot_api):
         return response.json().get('groupName')  # 群組名稱
     else:
         print (response)
-        return '請求失敗，錯誤碼: ' + str(response.status_code) + str(response.content)
+        return '請求失敗，錯誤碼: ' + str(response.status_code) + str(response.content) """
     
 async def handle_draw_tarot_card(event, line_bot_api):
     client = ImgurClient(client_id, client_secret)
@@ -688,13 +717,14 @@ async def sendImageMessage(event, line_bot_api, oriUrl, preUrl):
 #             TextMessage(text="(lag超過5秒就是訊息被吃掉了)")
 #         ])
 
-def aiPrompt(session_id, user_id, user_name):
+async def aiPrompt(session_id, user_id, user_name, supabase_async_client, openai_async_client):
     #要修改掉這個部分
     if session_id == "C87909cf6d7965192e2aa050bc4df5d8b":
         return None
 
     # 獲取會話的最近對話歷史作為上下文
-    recent_messages_query = supabase.table("messages").select("*").eq("sessionid", session_id).order("createdat", desc=True).limit(20).execute() #原為10則，但吃吃建議20則
+    recent_messages_query = await supabase_async_client.table("messages").select("*").eq("sessionid", session_id).order("createdat", desc=True).limit(20).execute() #原為10則，但吃吃建議20則
+    # recent_messages_query = supabase.table("messages").select("*").eq("sessionid", session_id).order("createdat", desc=True).limit(20).execute()
     #按照字數去判斷上下文要讀取多少段文字
 
     # if recent_messages_query.error:
@@ -702,7 +732,8 @@ def aiPrompt(session_id, user_id, user_name):
     #     return
 
     user_ids = set(msg["userid"] for msg in recent_messages_query.data)# 從消息中提取所有唯一的 UserID
-    users_query = supabase.table("users").select("*").in_("userid", list(user_ids)).execute()# 從 Users 表中檢索這些 UserID 對應的 UserName
+    users_query = await supabase_async_client.table("users").select("*").in_("userid", list(user_ids)).execute()# 從 Users 表中檢索這些 UserID 對應的 UserName
+    # users_query = supabase.table("users").select("*").in_("userid", list(user_ids)).execute()# 從 Users 表中檢索這些 UserID 對應的 UserName
     user_names = {user["userid"]: user["username"] for user in users_query.data}# 建立一個 UserID 到 UserName 的映射
 
     # 構建對話上下文，為每條消息顯示發送者的 UserName
@@ -754,7 +785,8 @@ def aiPrompt(session_id, user_id, user_name):
             },
         }
     ]
-    response = openai_client.chat.completions.create(
+    response = await openai_async_client.chat.completions.create(
+    # response = openai_client.chat.completions.create(
         model="gpt-4.1-2025-04-14",
         # model="gpt-4o-2024-05-13",
         # model="gpt-3.5-turbo-0125",
@@ -793,7 +825,8 @@ def aiPrompt(session_id, user_id, user_name):
                 f'可以按照2條線型加上2個單點串在一起解釋，"過去的狀況-現在的狀況-未來的狀況"'\
                 f'"自己的心態-環境的狀態or對方的心態-這個狀況的困難點""問題的結論""全局暗示"\n'\
                 f'提問者的問題是"{user_question}"\n請幫我試著分析這個問題，並寫下你的思考過程，謝謝你'
-            second_response = openai_client.chat.completions.create(
+            # second_response = openai_client.chat.completions.create(
+            second_response = await openai_async_client.chat.completions.create(
                 model="gpt-4.1-2025-04-14",
                 messages=[
                     {"role": "user", "content": tarotToAIsystemPrompt},
