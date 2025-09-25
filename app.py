@@ -71,14 +71,9 @@ async def callback():
 async def handle_events(events):
     # 建立一個非同步的 aiohttp session
     async with AsyncApiClient(configuration) as async_api_client,\
-                AsyncOpenAI(api_key=config.OPENAI_API_KEY) as openai_client:
+            AsyncOpenAI(api_key=config.OPENAI_API_KEY) as openai_client:
 
-        # 建立 Supabase 和 OpenAI 的非同步客戶端
-        
         supabase_client = await acreate_client(config.SUPABASE_URL, config.SUPABASE_KEY)
-            
-        """ supabase_client = await acreate_client(config.SUPABASE_URL, config.SUPABASE_KEY)
-        openai_client = AsyncOpenAI(api_key=config.OPENAI_API_KEY) """
 
         line_bot_api = AsyncMessagingApi(async_api_client)
         try:

@@ -2,15 +2,12 @@ import os
 import configparser
 
 from dotenv import load_dotenv
-from linebot.v3.messaging import Configuration
-from linebot.v3 import WebhookParser
 
 load_dotenv()
 
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-#line_bot_api = jwt.encode(payload, key, algorithm="RS256", headers=headers, json_encoder=None)
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("Channel_Access_Token")
 LINE_CHANNEL_SECRET = os.environ.get("Channel_Secret")
 
@@ -18,6 +15,9 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API")
+
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+GOOGLE_CSE_ID = os.environ.get("GOOGLE_CSE_ID")
 
 IMGUR_CLIENT_ID = config['imgur_api']['Client_ID']
 IMGUR_CLIENT_SECRET = config['imgur_api']['Client_Secret']

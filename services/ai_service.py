@@ -1,4 +1,6 @@
 import json
+import time
+import datetime
 
 from supabase import AsyncClient
 from openai import AsyncOpenAI
@@ -7,6 +9,7 @@ from .db_service import get_conversation_history
 from .web_crawler.scam_checker import perform_scam_phone_check
 from .tarot_service import perform_tarot_drawing_logic
 from config import INTERNAL_BLACKLIST_SET
+from services.web_search import perform_web_search
 
 async def get_ai_response(
     openai_client: AsyncOpenAI,
@@ -27,11 +30,13 @@ async def get_ai_response(
         toAIsystemPrompt = f'請你扮演亞璃子，以下是你的人物設定"亞璃子是一個在末日世界中，由瘋狂科學家{user_name}'
         toAIprompt = f'"""\n{conversation_history}\n"""\n以上是你跟主人之前的對話'
     else:#同一分鐘的訊息數量過一個量之後進入待機模式，最後或是下一句再進行回覆
-        toAIsystemPrompt = f'你叫做"吃吃管家"，是由豆豆開發的AI管家，是一個敬業的誠實的管家，照顧主人的生活起居，'\
+        toAIsystemPrompt = f'現在時間是:{datetime.datetime.now()}'\
+            '\n你叫做"吃吃管家"，是由豆豆開發的AI管家，是一個敬業的誠實的管家，照顧主人的生活起居，'\
             '請按照你的想法跟主人聊天，話語盡量精簡，除非是你覺得必要的話才可以多講，如果覺得主人在犯錯也要主動糾正主人的錯誤，'\
             '如果有2位以上的主人在場請叫出對方的稱呼，如果主人請你解釋一個概念，請用稍微簡單但又精確的語言描述，並舉例說明。'\
             '請接著之前的對話，並關注最後一句話，說出你的下一句話，不用打出你的稱呼，只要打出你的說話內容就行，回答請用繁中。'\
             '\n\n條件：\n●文章\n如果主人傳了一篇比較長的文章，請詳細分析該文章的合理性，如果有誤請糾正，並給出相關證據。'\
+            '\n\n如果主人詢問有關時事的問題，請多利用搜尋工具'\
             '\n\n●防詐騙\n如果主人傳了電話號碼(請不要確認號碼格式)，請呼叫check_scam_phone工具進行查詢並回報給主人'\
             """包括手機跟市話，看起來不像你所知的台灣電話你也要查看看"""\
             '\n\n●沉默\n如果你覺得這段對話不需要進行回覆或是不需要發言可以選擇沉默，如果要沉默請在句首輸出`#silent#`'\
@@ -78,6 +83,23 @@ async def get_ai_response(
                         }
                     },
                     "required": ["phone_number"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "web_search",
+                "description": "當需要查詢即時資訊、特定事件、人物、地點，或AI訓練資料庫中可能沒有的最新知識時，使用此工具搜尋網路。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "要搜尋的關鍵字或問題，例如：'今天天氣如何？'或'OpenAI最新發表的模型是什麼？'",
+                        }
+                    },
+                    "required": ["query"],
                 },
             },
         }
@@ -188,6 +210,18 @@ async def get_ai_response(
                     print_reply_text = ", ".join(reply_text)
                 print("\nOutput: "+print_reply_text)
                 return reply_text
+            
+            case "web_search":
+                query = function_args.get("query")
+                function_response = await perform_web_search(query)
+                if function_response is None:
+                    function_response = []
+                messages.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": function_response
+                })
                 
     final_response = await openai_client.chat.completions.create(
         model="gpt-4.1-2025-04-14",

@@ -19,17 +19,17 @@ async def handle_draw_tarot_card(event, line_bot_api):
 async def handle_roll_astro_dice(event, line_bot_api):
     """處理占星骰指令"""
     dice_result = tarot_service.roll_astro_dice()
-    await line_service.sendNormalText(event, line_bot_api, dice_result)
+    await line_service.send_text_message(event, line_bot_api, dice_result)
 
 async def handle_hexagram_explanation(event, line_bot_api):
     """處理六芒星說明指令"""
     text_content="牌陣說明: \n              過去\n對方心態          困難點\n              " +\
             "結論\n   未來               現在\n          自己的心態\n全局暗示\n(對方心態)可以換成(環境狀況)"
-    await line_service.sendNormalText(event, line_bot_api, text_content)
+    await line_service.send_text_message(event, line_bot_api, text_content)
 
 async def handle_show_help_message(event, line_bot_api):
     content="特殊指令:\n\n抽正牌\n骰子卡\n六芒星說明"
-    await line_service.sendNormalText(event, line_bot_api, content)
+    await line_service.send_text_message(event, line_bot_api, content)
 
 async def handle_ptt_beauty(event, line_bot_api):
     """處理 PTT 表特版指令"""

@@ -92,36 +92,6 @@ def craw_page(res, push_rate):
                         'rate': rate,
                     })
         except Exception as e:
-            # 如果在處理單一文章時發生任何預期外的錯誤，印出訊息並繼續處理下一篇
             print(f"解析文章時發生錯誤: {e}")
             continue
-        #     try:
-        #         if r_ent.find(class_="L9").find(class_="fgG1"):
-        #             rate = r_ent.find(class_="L9").find(class_="fgG1").text
-        #         if r_ent.find(class_="L9").find(class_="fgY1"):
-        #             rate = r_ent.find(class_="L9").find(class_="fgY1").text
-        #         # print(rate)
-        #         # print("********")
-        #         # rate = int(rate)
-        #         # print(rate)
-        #         if rate:
-        #             rate = 100 if rate.startswith('爆') else rate
-        #             rate = -1 * int(rate[1]) if rate.startswith('X') else rate
-        #         else:
-        #             rate = 0
-        #     except Exception as e:
-        #         rate = 0
-        #         print('無推顯示', e)
-        #     # print(rate)
-        #     # 比對推文數
-        #     if int(rate) >= push_rate:
-        #         article_seq.append({
-        #             'title': title,
-        #             'url': url,
-        #             'rate': rate,
-        #         })
-        #     # print(article_seq)
-        # except Exception as e:
-        #     # print('crawPage function error:',r_ent.find(class_="title").text.strip())
-        #     print('本文已被刪除', e)
     return article_seq
