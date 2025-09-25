@@ -34,6 +34,8 @@ pyimgur = "*"
 httpx = "*"
 httpcore = "*"
 python-dotenv = "*"
+playwright = "*"
+lxml = "*"
 
 [dev-packages]
 pytest = "*"
