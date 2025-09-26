@@ -3,6 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Visitors](https://visitor-badge.laobi.icu/badge?page_id=hankbean.anya-helper)
 
 「吃吃管家」是一個多功能 LINE 智慧助理，整合了強大的 AI 聊天、實用的生活工具與有趣的玄學娛樂，旨在為您的日常對話帶來便利與樂趣。
 
