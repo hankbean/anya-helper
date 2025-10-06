@@ -1,4 +1,5 @@
 import random
+import textwrap
 
 def get_random_tarot_image_url(imgur_client):
     images = imgur_client.get_album_images("jAqXRhh")#client.get_album_images("l8aRa")
@@ -7,10 +8,12 @@ def get_random_tarot_image_url(imgur_client):
     return url
 
 def roll_astro_dice():
-    starNum = random.randint(0, 11)
-    signNum = random.randint(0, 11)
-    palaceNum = random.randint(0, 11)
-    star = [
+    star_num = random.randint(0, 10)
+    sign_num = random.randint(0, 11)
+    palace_num = random.randint(0, 11)
+    asc_degree = random.randint(0, 359)
+    star_degree = random.randint(0, 359)
+    STAR = [
         "月亮",
         "水星",
         "金星",
@@ -21,10 +24,9 @@ def roll_astro_dice():
         "天王星",
         "海王星",
         "冥王星",
-        "凱隆星",
         "北交點"
     ]
-    sign = [
+    SIGN = [
         "♈白羊",
         "♉金牛",
         "♊雙子",
@@ -38,7 +40,7 @@ def roll_astro_dice():
         "♒水瓶",
         "♓雙魚"
     ] 
-    palace = [
+    PALACE = [
         "1宮",
         "2宮",
         "3宮",
@@ -52,7 +54,55 @@ def roll_astro_dice():
         "11宮",
         "12宮"
     ] 
-    return star[starNum] + "，" + sign[signNum] + "，" + palace[palaceNum]
+    asc_index =  (asc_degree // 30) % 12
+    sign_index = (star_degree // 30) % 12
+    angular_distance = (star_degree - asc_degree + 360) % 360
+    palace_index = angular_distance // 30
+    content = f"""
+        {random.choice(STAR)}，{SIGN[sign_index]}，{PALACE[palace_index]}
+        備註: 上升星座 (ASC) 為{SIGN[asc_index]}
+        
+        以下為測試資料不需要理會
+        ASC度數={str(asc_degree)}
+        星體度數={str(star_degree)}"""
+    return textwrap.dedent(content).strip()
+
+def roll_astro_dice_plus():
+    ascNum = random.randint(0, 11)
+    MoonNum = random.randint(0, 11)
+    SunNum = random.randint(0, 11)
+    qNum = random.randint(0, 2)
+    wNum = random.randint(0, 4)
+    eNum = random.randint(0, 11)
+    rNum = random.randint(0, 11)
+    tNum = random.randint(0, 11)
+    yNum = random.randint(0, 11)
+    uNum = random.randint(0, 11)
+    iNum = random.randint(0, 11)
+    jNum = random.randint(0, 11)
+    SIGN = [
+        "白羊",
+        "金牛",
+        "雙子",
+        "巨蟹",
+        "獅子",
+        "處女",
+        "天秤",
+        "天蝎",
+        "射手",
+        "摩羯",
+        "水瓶",
+        "雙魚"
+    ] 
+    content = f"""
+        占星卜卦盤    ASC:   {SIGN[ascNum]}
+        月亮: {SIGN[(ascNum-1+MoonNum+1)%12]} {MoonNum+1}宮    太陽: {SIGN[ascNum-1+SunNum+1]} {SunNum+1}宮
+        水星: {SIGN[(ascNum-1+SunNum+1+qNum-1)%12]} {SunNum+1+qNum-1}宮    金星: {SIGN[(ascNum-1+SunNum+1+wNum-2)%12]} {SunNum+1+wNum-2}宮
+        火星: {SIGN[(ascNum-1+eNum+1)%12]} {eNum+1}宮    木星: {SIGN[(ascNum-1+rNum+1)%12]} {rNum+1}宮
+        土星: {SIGN[(ascNum-1+tNum+1)%12]} {tNum+1}宮    天王星: {SIGN[(ascNum-1+yNum+1)%12]} {yNum+1}宮
+        海王星: {SIGN[(ascNum-1+uNum+1)%12]} {uNum+1}宮    冥王星: {SIGN[(ascNum-1+iNum+1)%12]} {iNum+1}宮
+        北交點: {SIGN[(ascNum-1+jNum+1)%12]} {jNum+1}宮    南交點: {SIGN[(ascNum-1+(jNum+1+6)%12)%12]} {(jNum+1+6)%12}宮"""
+    return textwrap.dedent(content).strip()#加上星座
 
 def perform_tarot_drawing_logic():
     turn = [

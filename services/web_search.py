@@ -34,7 +34,8 @@ async def perform_web_search(query: str) -> str:
             link = item.get("link", "")
             snippet = item.get("snippet", "").replace("\n", " ")
             summary += f"【結果 {i+1}】\n標題：{title}\n摘要：{snippet}\n連結：{link}\n\n"
-            
+        
+        print(summary.strip())
         return json.dumps({"status": "success", "summary": summary.strip()})
 
     except Exception as e:

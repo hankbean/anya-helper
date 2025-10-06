@@ -1,12 +1,8 @@
 import os
-import configparser
 
 from dotenv import load_dotenv
 
 load_dotenv()
-
-config = configparser.ConfigParser()
-config.read("config.ini")
 
 LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("Channel_Access_Token")
 LINE_CHANNEL_SECRET = os.environ.get("Channel_Secret")
@@ -19,10 +15,9 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 GOOGLE_CSE_ID = os.environ.get("GOOGLE_CSE_ID")
 
-IMGUR_CLIENT_ID = config['imgur_api']['Client_ID']
-IMGUR_CLIENT_SECRET = config['imgur_api']['Client_Secret']
-album_id = config['imgur_api']['Album_ID']
-API_Get_Image = config['other_api']['API_Get_Image']
+IMGUR_CLIENT_ID = os.environ.get("IMGUR_CLIENT_ID")
+IMGUR_CLIENT_SECRET = os.environ.get("IMGUR_CLIENT_SECRET")
+IMGUR_ALBUM_ID = os.environ.get("IMGUR_ALBUM_ID")
 
 INTERNAL_BLACKLIST_SET = {
     "0987654321", 

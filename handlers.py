@@ -9,6 +9,8 @@ from services import line_service, db_service, ai_service, tarot_service
 from services.web_crawler import ptt_crawler
 import config
 
+import random
+
 imgur_client = ImgurClient(config.IMGUR_CLIENT_ID, config.IMGUR_CLIENT_SECRET)
 
 async def handle_draw_tarot_card(event, line_bot_api):
@@ -19,6 +21,13 @@ async def handle_draw_tarot_card(event, line_bot_api):
 async def handle_roll_astro_dice(event, line_bot_api):
     """處理占星骰指令"""
     dice_result = tarot_service.roll_astro_dice()
+    # dice_result = "功能錯誤修復中..."
+    await line_service.send_text_message(event, line_bot_api, dice_result)
+
+async def handle_roll_astro_dice_plus(event, line_bot_api):
+    """處理進階占星骰指令"""
+    dice_result = tarot_service.roll_astro_dice_plus()
+    # dice_result = "功能錯誤修復中..."
     await line_service.send_text_message(event, line_bot_api, dice_result)
 
 async def handle_hexagram_explanation(event, line_bot_api):
@@ -27,8 +36,27 @@ async def handle_hexagram_explanation(event, line_bot_api):
             "結論\n   未來               現在\n          自己的心態\n全局暗示\n(對方心態)可以換成(環境狀況)"
     await line_service.send_text_message(event, line_bot_api, text_content)
 
+async def handle_test(event, line_bot_api):
+    content = ""
+    STAR = [
+        "月亮",
+        "水星",
+        "金星",
+        "太陽",
+        "火星",
+        "木星",
+        "土星",
+        "天王星",
+        "海王星",
+        "冥王星",
+        "北交點"
+    ]
+    for _ in range(50):
+        content += f'{random.choice(STAR)} '
+    await line_service.send_text_message(event, line_bot_api, content)
+
 async def handle_show_help_message(event, line_bot_api):
-    content="特殊指令:\n\n抽正牌\n骰子卡\n六芒星說明"
+    content="特殊指令:\n\n抽正牌\n骰子卡\n進階骰子卡\n六芒星說明"
     await line_service.send_text_message(event, line_bot_api, content)
 
 async def handle_ptt_beauty(event, line_bot_api):

@@ -10,8 +10,6 @@ import asyncio
 from postgrest.exceptions import APIError
 
 from playwright.async_api import async_playwright
-import httpx
-import configparser
 import gspread
 import psycopg2
 import pyimgur
@@ -105,10 +103,14 @@ async def process_message_event(event, line_bot_api, supabase_client, openai_cli
             await handlers.handle_draw_tarot_card(event, line_bot_api)
         case ["骰子卡"]:
             await handlers.handle_roll_astro_dice(event, line_bot_api)
+        case ["進階骰子卡"]:
+            await handlers.handle_roll_astro_dice_plus(event, line_bot_api)
         case ["六芒星說明"]:
             await handlers.handle_hexagram_explanation(event, line_bot_api)
         case ["表特/"]:
             await handlers.handle_ptt_beauty(event, line_bot_api)
+        case ["test"]:
+            await handlers.handle_test(event, line_bot_api)
         case _:
             await handlers.handle_default_message(event, line_bot_api, supabase_client, openai_client)
    
