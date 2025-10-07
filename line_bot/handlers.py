@@ -1,0 +1,109 @@
+from linebot.v3.messaging import AsyncMessagingApi
+from linebot.v3.webhooks import Event,MessageEvent
+from linebot.v3.webhooks.models import (
+    user_source, 
+    group_source,
+    TextMessageContent,
+)
+from supabase import AsyncClient
+from openai import AsyncOpenAI
+from imgurpython import ImgurClient
+
+from .services import line_service, db_service, ai_service, tarot_service
+from .services.web_crawler import ptt_crawler
+from django.conf import settings
+
+import random
+
+# imgur_client = ImgurClient(config.IMGUR_CLIENT_ID, config.IMGUR_CLIENT_SECRET)
+
+async def handle_draw_tarot_card(event, line_bot_api, imgur_client):
+    """處理抽塔羅牌指令"""
+    image_url = tarot_service.get_random_tarot_image_url(imgur_client)
+    await line_service.send_image_message(event, line_bot_api, image_url, image_url)
+
+async def handle_roll_astro_dice(event, line_bot_api):
+    """處理占星骰指令"""
+    dice_result = tarot_service.roll_astro_dice()
+    # dice_result = "功能錯誤修復中..."
+    await line_service.send_text_message(event, line_bot_api, dice_result)
+
+async def handle_roll_astro_dice_plus(event, line_bot_api):
+    """處理進階占星骰指令"""
+    dice_result = tarot_service.roll_astro_dice_plus()
+    # dice_result = "功能錯誤修復中..."
+    await line_service.send_text_message(event, line_bot_api, dice_result)
+
+async def handle_hexagram_explanation(event, line_bot_api):
+    """處理六芒星說明指令"""
+    text_content="牌陣說明: \n              過去\n對方心態          困難點\n              " +\
+            "結論\n   未來               現在\n          自己的心態\n全局暗示\n(對方心態)可以換成(環境狀況)"
+    await line_service.send_text_message(event, line_bot_api, text_content)
+
+async def handle_test(event, line_bot_api):
+    content = ""
+    STAR = [
+        "月亮",
+        "水星",
+        "金星",
+        "太陽",
+        "火星",
+        "木星",
+        "土星",
+        "天王星",
+        "海王星",
+        "冥王星",
+        "北交點"
+    ]
+    for _ in range(50):
+        content += f'{random.choice(STAR)} '
+    await line_service.send_text_message(event, line_bot_api, content)
+
+async def handle_show_help_message(event, line_bot_api):
+    content="特殊指令:\n\n抽正牌\n骰子卡\n進階骰子卡\n六芒星說明"
+    await line_service.send_text_message(event, line_bot_api, content)
+
+async def handle_ptt_beauty(event, line_bot_api):
+    """處理 PTT 表特版指令"""
+    content = ptt_crawler.ptt_beauty()
+    await line_service.send_text_message(event, line_bot_api, content)
+
+async def handle_default_message(
+    event: MessageEvent,
+    line_bot_api: AsyncMessagingApi,
+    db_client: AsyncClient,
+    openai_client: AsyncOpenAI
+):
+    """處理預設訊息（聊天、AI互動）"""
+    if event.source:
+        if isinstance(event.message, TextMessageContent):
+            if isinstance(event.source, (user_source.UserSource, group_source.GroupSource)):
+                user_id = "未知用戶ID"
+                
+                user_name = "未知用戶名"
+                if event.source.user_id:
+                    try:
+                        user_id = event.source.user_id
+                        profile = await line_bot_api.get_profile(user_id)
+                        user_name = profile.display_name
+                    except Exception as e:
+                        print(f"用戶未加入吃吃或已封鎖吃吃無法獲取user_name: {e}")
+                    
+                    await db_service.upsert_user(db_client, user_id, user_name)
+                message_text = event.message.text
+                session_id = ""
+                if isinstance(event.source, group_source.GroupSource):
+                    group_id = event.source.group_id
+                    group_name = await line_service.get_group_name(group_id, line_bot_api)
+                    print("group_name: ", group_name)
+                    await db_service.save_group_message(db_client, group_id, group_name, user_id, message_text)
+                    session_id = group_id
+                else:
+                    session_id = await db_service.manage_user_session_and_message(db_client, user_id, message_text)
+
+                if not message_text.endswith('/') and user_id not in settings.BLACKLIST_USERS:
+                    ai_reply = await ai_service.get_ai_response(openai_client, db_client, session_id, user_id, user_name)
+                    if ai_reply:
+                        reply_to_save = ai_reply[1] if isinstance(ai_reply, list) and len(ai_reply) > 1 else (ai_reply[0] if isinstance(ai_reply, list) else ai_reply)
+                        await db_service.save_ai_reply(db_client, session_id, user_id, reply_to_save)
+                        await line_service.send_text_message(event, line_bot_api, ai_reply)

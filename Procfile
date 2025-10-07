@@ -1,1 +1,1 @@
-web: gunicorn app:app
+web: gunicorn anya_project.wsgi --log-file -

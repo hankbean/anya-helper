@@ -28,7 +28,7 @@ async def save_group_message(db_client: AsyncClient, group_id: str, group_name: 
         "content": content, "direction": "inbound"
     }, returning="minimal").execute()
 
-async def manage_user_session_and_message(db_client: AsyncClient, user_id: str, content: str):
+async def manage_user_session_and_message(db_client: AsyncClient, user_id: str, content: str) -> str:
     """管理一對一聊天的工作流程：檢查/建立 session 並儲存訊息"""
     session_query = await db_client.table("sessions").select("sessionid, status").eq("userid", user_id).order("createdat", desc=True).limit(1).execute()
     

@@ -1,8 +1,7 @@
 import httpx
 import json
 import os
-
-from config import GOOGLE_API_KEY, GOOGLE_CSE_ID 
+from django.conf import settings
 
 async def perform_web_search(query: str) -> str:
     """
@@ -11,8 +10,8 @@ async def perform_web_search(query: str) -> str:
 
     url = "https://www.googleapis.com/customsearch/v1"
     params = {
-        "key": GOOGLE_API_KEY,
-        "cx": GOOGLE_CSE_ID,
+        "key": settings.GOOGLE_API_KEY,
+        "cx": settings.GOOGLE_CSE_ID,
         "q": query,
         "num": 5  # 只獲取前 5 筆結果
     }

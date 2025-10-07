@@ -4,12 +4,13 @@ import datetime
 
 from supabase import AsyncClient
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageCustomToolCall, ChatCompletionMessageFunctionToolCall
 
 from .db_service import get_conversation_history
 from .web_crawler.scam_checker import perform_scam_phone_check
 from .tarot_service import perform_tarot_drawing_logic
-from config import INTERNAL_BLACKLIST_SET
-from services.web_search import perform_web_search
+from django.conf import settings
+from .web_search import perform_web_search
 
 async def get_ai_response(
     openai_client: AsyncOpenAI,
@@ -132,96 +133,94 @@ async def get_ai_response(
     print("\nOutput: " + str(response_message))
     
     if not tool_calls:
-        if response_message.content and response_message.content.strip().startswith("#silent#"):#吃吃有權保持沉默
-            return None
-        return response_message.content.strip()
+        if response_message.content:
+            if response_message.content.strip().startswith("#silent#"):#吃吃有權保持沉默
+                return None
+            return response_message.content.strip()
+        return None
     
     messages.append(response_message.model_dump())
     print("messages加response: ", messages)
-    # a=[{'role': 'system', 'content': ''}, {'role': 'user', 'content': ''}, ChatCompletionMessage(content='豆豆，你的問題已確認是：「我今天身體狀況如何？」我現在幫你抽塔羅牌。請稍等。', refusal=None, role='assistant', annotations=[], audio=None, function_call=None, tool_calls=[ChatCompletionMessageFunctionToolCall(id='call_eWuCiC9E0Mdc3y9zp368dP0J', function=Function(arguments='{"user_question":"我今天身體狀況如何？"}', name='draw_tarot_cards'), type='function')])]
-    # b=[{'role': 'system', 'content': ''}, {'role': 'user', 'content': ''}, {'content': '豆豆，你已經確認要問「我今天身體狀況如何？」這個問題，我現在幫你抽塔羅牌，請稍等。', 'refusal': None, 'role': 'assistant', 'annotations': [], 'audio': None, 'function_call': None, 'tool_calls': [{'id': 'call_AspoWVSTz5yi1Gawzj55EHXZ', 'function': {'arguments': '{"user_question":"我今天身體狀況如何？"}', 'name': 'draw_tarot_cards'}, 'type': 'function'}]}]
-    # c=[{'role': 'system', 'content': ''}, {'role': 'user', 'content': ''}, {'content': None, 'refusal': None, 'role': 'assistant', 'annotations': [], 'audio': None, 'function_call': None, 'tool_calls': [{'id': 'call_hXgDiiRnxDUWDpqMbR7FB0Dn', 'function': {'arguments': '{"user_question":"我今天身體狀況如何？"}', 'name': 'draw_tarot_cards'}, 'type': 'function'}]}]
     for tool_call in tool_calls:
-        function_name = tool_call.function.name
-        function_args = json.loads(tool_call.function.arguments)
+        if isinstance(tool_call, ChatCompletionMessageFunctionToolCall):
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments)
 
-        match function_name:
+            match function_name:
 
-            case "check_scam_phone":
-                phone_number = function_args.get("phone_number")
-                function_response = await perform_scam_phone_check(
-                    phone_number,
-                    INTERNAL_BLACKLIST_SET 
-                )
-                print("function_response: ", function_response)
-                if function_response is None:
-                    function_response = []
-                messages.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": function_name,
-                        "content": function_response
-                })
-                print("messages: ", messages)
+                case "check_scam_phone":
+                    phone_number = function_args.get("phone_number")
+                    function_response = await perform_scam_phone_check(
+                        phone_number,
+                        settings.INTERNAL_BLACKLIST_SET 
+                    )
+                    print("function_response: ", function_response)
+                    messages.append({
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": function_response
+                    })
+                    print("messages: ", messages)
 
-            case "draw_tarot_cards":
-                user_question = function_args.get("user_question")
-                cardList = perform_tarot_drawing_logic() 
-                tarotToAIsystemPrompt = '我抽了塔羅牌六芒星牌陣：\n"""\n'\
-                    f'過去的狀況: {cardList[0]}\n現在的狀況: {cardList[1]}\n未來的狀況: {cardList[2]}\n'\
-                    f'自己的心態: {cardList[3]}\n環境的狀態or對方的心態: {cardList[4]}\n這個狀況的困難點: {cardList[5]}\n'\
-                    f'問題的結論: {cardList[6]}\n全局暗示(提問者抽牌當下整體的心態，包含但不局限於這個問題本身): {cardList[7]}\n"""\n'\
-                    f'可以按照2條線型加上2個單點串在一起解釋，"過去的狀況-現在的狀況-未來的狀況"'\
-                    f'"自己的心態-環境的狀態or對方的心態-這個狀況的困難點""問題的結論""全局暗示"\n'\
-                    f'提問者的問題是"{user_question}"\n請幫我試著分析這個問題，並寫下你的思考過程，謝謝你'
-                # second_response = openai_client.chat.completions.create(
-                reply_text=[]
-                reply_text.append(
-                    "占卜問題: "+user_question+"\n占卜結果: " 
-                    + "\n            " + cardList[0] + "\n" + cardList[4] + "          " + cardList[5] 
-                    + "\n            " + cardList[6] + "\n" + cardList[2] + "          " + cardList[1] 
-                    + "\n            " + cardList[3] + "\n\n全局暗示: "+ cardList[7]
-                )
-                messages = [msg for msg in messages if msg['role'] != 'system']
-                print("messages: ", messages)
-                messages = [{"role": "user", "content": tarotToAIsystemPrompt}]
+                case "draw_tarot_cards":
+                    user_question = function_args.get("user_question")
+                    cardList = perform_tarot_drawing_logic() 
+                    tarotToAIsystemPrompt = '我抽了塔羅牌六芒星牌陣：\n"""\n'\
+                        f'過去的狀況: {cardList[0]}\n現在的狀況: {cardList[1]}\n未來的狀況: {cardList[2]}\n'\
+                        f'自己的心態: {cardList[3]}\n環境的狀態or對方的心態: {cardList[4]}\n這個狀況的困難點: {cardList[5]}\n'\
+                        f'問題的結論: {cardList[6]}\n全局暗示(提問者抽牌當下整體的心態，包含但不局限於這個問題本身): {cardList[7]}\n"""\n'\
+                        f'可以按照2條線型加上2個單點串在一起解釋，"過去的狀況-現在的狀況-未來的狀況"'\
+                        f'"自己的心態-環境的狀態or對方的心態-這個狀況的困難點""問題的結論""全局暗示"\n'\
+                        f'提問者的問題是"{user_question}"\n請幫我試著分析這個問題，並寫下你的思考過程，謝謝你'
+                    # second_response = openai_client.chat.completions.create(
+                    reply_text=[]
+                    reply_text.append(
+                        "占卜問題: "+user_question+"\n占卜結果: " 
+                        + "\n            " + cardList[0] + "\n" + cardList[4] + "          " + cardList[5] 
+                        + "\n            " + cardList[6] + "\n" + cardList[2] + "          " + cardList[1] 
+                        + "\n            " + cardList[3] + "\n\n全局暗示: "+ cardList[7]
+                    )
+                    messages = [msg for msg in messages if msg['role'] != 'system']
+                    print("messages: ", messages)
+                    messages = [{"role": "user", "content": tarotToAIsystemPrompt}]
 
-                # messages.append({
-                #         "tool_call_id": tool_call.id,
-                #         "role": "tool",
-                #         "name": function_name,
-                #         "content": ""
-                # })
-                print("messages: ", messages)
-                second_response = await openai_client.chat.completions.create(
-                    model="gpt-4.1-2025-04-14",
-                    messages=messages,
-                    temperature=1.2,
-                    presence_penalty=0.5,
-                    frequency_penalty=0.1,
-                    top_p=0.9,
-                    max_tokens=2000,
-                    n=1
-                )
-                print("second_response: ", second_response)
+                    # messages.append({
+                    #         "tool_call_id": tool_call.id,
+                    #         "role": "tool",
+                    #         "name": function_name,
+                    #         "content": ""
+                    # })
+                    print("messages: ", messages)
+                    second_response = await openai_client.chat.completions.create(
+                        model="gpt-4.1-2025-04-14",
+                        messages=messages,
+                        temperature=1.2,
+                        presence_penalty=0.5,
+                        frequency_penalty=0.1,
+                        top_p=0.9,
+                        max_tokens=2000,
+                        n=1
+                    )
+                    print("second_response: ", second_response)
 
-                reply_text.append(second_response.choices[0].message.content.strip()) 
-                if isinstance(reply_text, list):
-                    print_reply_text = ", ".join(reply_text)
-                print("\nOutput: "+print_reply_text)
-                return reply_text
-            
-            case "web_search":
-                query = function_args.get("query")
-                function_response = await perform_web_search(query)
-                if function_response is None:
-                    function_response = []
-                messages.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": function_name,
-                        "content": function_response
-                })
+                    reply_text.append(second_response.choices[0].message.content.strip()) 
+                    if isinstance(reply_text, list):
+                        print_reply_text = ", ".join(reply_text)
+                    print("\nOutput: "+print_reply_text)
+                    return reply_text
+                
+                case "web_search":
+                    query = function_args.get("query")
+                    function_response = await perform_web_search(query)
+                    if function_response is None:
+                        function_response = []
+                    messages.append({
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": function_name,
+                            "content": function_response
+                    })
                 
     final_response = await openai_client.chat.completions.create(
         model="gpt-4.1-2025-04-14",

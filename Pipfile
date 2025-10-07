@@ -4,42 +4,18 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-alembic = "*"
-click = "*"
-httplib2 = "*"
-itsdangerous = "*"
-oauth2 = "*"
-pycparser = "*"
-python-editor = "*"
-requests = "*"
-webassets = "*"
-gunicorn = "*"
-beautifulsoup4 = "*"
-line-bot-sdk = "*"
-imgurpython = "*"
-psycopg2-binary = "*"
-flask = {extras = ["async"], version = "*"}
-Flask-Assets = "*"
-Flask-Babel = "*"
-Flask-Script = "*"
-Jinja2 = "*"
-Mako = "*"
-MarkupSafe = "*"
-Werkzeug = "*"
-gspread = "*"
-oauth2client = "*"
-openai = "*"
-supabase = "*"
-pyimgur = "*"
-httpx = "*"
-httpcore = "*"
+django = "*"
 python-dotenv = "*"
+line-bot-sdk = "*"
+openai = "*"
+supabase = {extras = ["async"], version = "*"}
+imgurpython = {extras = ["async"], version = "*"}
+httpx = "*"
 playwright = "*"
+beautifulsoup4 = "*"
 lxml = "*"
 
 [dev-packages]
-pytest = "*"
-pytest-mock = "*"
 
 [requires]
 python_version = "3.13"
